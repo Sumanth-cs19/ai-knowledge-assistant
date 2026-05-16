@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ai-knowledge-assistant.Api/ai-knowledge-assistant.Api.csproj" />
+  <Project Path="ai-knowledge-assistant.Application/ai-knowledge-assistant.Application.csproj" />
+  <Project Path="ai-knowledge-assistant.Domain/ai-knowledge-assistant.Domain.csproj" />
+  <Project Path="ai-knowledge-assistant.Infrastructure/ai-knowledge-assistant.Infrastructure.csproj" />
+</Solution>
