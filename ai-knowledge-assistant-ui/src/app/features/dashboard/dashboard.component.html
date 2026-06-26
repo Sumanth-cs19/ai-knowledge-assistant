@@ -1,0 +1,27 @@
+<section class="page">
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>dashboard</mat-icon>
+      <mat-card-title>Dashboard</mat-card-title>
+      <mat-card-subtitle>Overview of documents, conversations, and retrieval activity.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="user-summary">
+        <div>
+          <span>Signed in as</span>
+          <strong>{{ currentUser()?.email }}</strong>
+        </div>
+        <div>
+          <span>Role</span>
+          <strong>{{ currentUser()?.role }}</strong>
+        </div>
+      </div>
+
+      <div class="placeholder-grid">
+        <div>Documents indexed</div>
+        <div>Recent conversations</div>
+        <div>Search quality</div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</section>

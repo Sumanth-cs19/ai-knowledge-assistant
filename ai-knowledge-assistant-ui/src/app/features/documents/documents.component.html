@@ -1,0 +1,228 @@
+<section class="documents-page">
+  <mat-card appearance="outlined" class="page-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>description</mat-icon>
+      <mat-card-title>Documents</mat-card-title>
+      <mat-card-subtitle>Upload, review, and manage indexed knowledge sources.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <section
+        class="upload-zone"
+        [class.drag-over]="isDragOver()"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)">
+        <mat-icon>cloud_upload</mat-icon>
+        <div>
+          <h3>Upload a document</h3>
+          <p>Drag a PDF or DOCX file here, or choose a file from your device.</p>
+        </div>
+        <input
+          #fileInput
+          type="file"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          hidden
+          (change)="onFileSelected($event)" />
+        <button mat-flat-button color="primary" type="button" (click)="fileInput.click()" [disabled]="isUploading()">
+          Choose File
+        </button>
+      </section>
+
+      @if (isUploading()) {
+        <div class="upload-progress">
+          <div>
+            <span>Uploading</span>
+            <strong>{{ uploadProgress() }}%</strong>
+          </div>
+          <mat-progress-bar mode="determinate" [value]="uploadProgress()" />
+        </div>
+      }
+
+      <section class="filters">
+        <mat-form-field appearance="outline">
+          <mat-label>Search documents</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput type="search" [formControl]="searchControl" placeholder="Search by name" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select [formControl]="statusControl">
+            @for (option of statusOptions; track option.label) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      @if (documents().length === 0) {
+        <div class="empty-state">
+          <mat-icon>folder_open</mat-icon>
+          <h3>No documents uploaded</h3>
+          <p>Upload your first PDF or DOCX file to start building the knowledge base.</p>
+        </div>
+      } @else if (hasNoSearchResults()) {
+        <div class="empty-state">
+          <mat-icon>manage_search</mat-icon>
+          <h3>No search results</h3>
+          <p>Try a different document name or status filter.</p>
+        </div>
+      } @else {
+        <div class="document-list">
+          @for (document of pagedDocuments(); track document.id) {
+            <article class="document-row">
+              <div class="document-icon">
+                <mat-icon>{{ document.originalFileName.toLowerCase().endsWith('.pdf') ? 'picture_as_pdf' : 'article' }}</mat-icon>
+              </div>
+
+              <div class="document-main">
+                <div class="document-title">
+                  <h3>{{ document.originalFileName }}</h3>
+                  <span class="status-badge" [class]="getStatusClass(document.status)">
+                    {{ getStatusLabel(document.status) }}
+                  </span>
+                </div>
+                <div class="document-meta">
+                  <span>Uploaded {{ document.uploadedAt | date: 'medium' }}</span>
+                  <span>Version {{ document.versionNumber }}</span>
+                  @if (document.processedAt) {
+                    <span>Processed {{ document.processedAt | date: 'short' }}</span>
+                  }
+                </div>
+                @if (document.errorMessage) {
+                  <p class="document-error">{{ document.errorMessage }}</p>
+                }
+              </div>
+
+              <button mat-icon-button [matMenuTriggerFor]="documentMenu" aria-label="Document actions">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+
+              <mat-menu #documentMenu="matMenu">
+                <button mat-menu-item type="button" (click)="viewDetails(document)">
+                  <mat-icon>visibility</mat-icon>
+                  <span>View details</span>
+                </button>
+                <button mat-menu-item type="button" (click)="viewChunks(document)">
+                  <mat-icon>segment</mat-icon>
+                  <span>View chunks</span>
+                </button>
+                <button mat-menu-item type="button" (click)="viewVersions(document)">
+                  <mat-icon>history</mat-icon>
+                  <span>View versions</span>
+                </button>
+                <button mat-menu-item type="button" (click)="reindex(document)">
+                  <mat-icon>sync</mat-icon>
+                  <span>Re-index</span>
+                </button>
+                <button mat-menu-item type="button" (click)="deleteDocument(document)">
+                  <mat-icon>delete</mat-icon>
+                  <span>Delete</span>
+                </button>
+              </mat-menu>
+            </article>
+          }
+        </div>
+
+        <mat-paginator
+          [length]="filteredDocuments().length"
+          [pageIndex]="pageIndex()"
+          [pageSize]="pageSize()"
+          [pageSizeOptions]="[5, 10, 20]"
+          (page)="pageChanged($event)" />
+      }
+    </mat-card-content>
+  </mat-card>
+
+  @if (activePanel() && selectedDocument(); as document) {
+    <mat-card appearance="outlined" class="detail-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>
+          @if (activePanel() === 'chunks') {
+            segment
+          } @else if (activePanel() === 'versions') {
+            history
+          } @else {
+            info
+          }
+        </mat-icon>
+        <mat-card-title>{{ document.originalFileName }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ activePanel() === 'chunks' ? 'Document chunks' : activePanel() === 'versions' ? 'Document versions' : 'Document details' }}
+        </mat-card-subtitle>
+        <button mat-icon-button type="button" class="close-panel" (click)="closePanel()" aria-label="Close details">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (activePanel() === 'details') {
+          <dl class="details-grid">
+            <div>
+              <dt>Status</dt>
+              <dd>{{ getStatusLabel(document.status) }}</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd>{{ document.versionNumber }}</dd>
+            </div>
+            <div>
+              <dt>Content type</dt>
+              <dd>{{ document.contentType }}</dd>
+            </div>
+            <div>
+              <dt>Uploaded</dt>
+              <dd>{{ document.uploadedAt | date: 'medium' }}</dd>
+            </div>
+            <div>
+              <dt>Processed</dt>
+              <dd>{{ document.processedAt ? (document.processedAt | date: 'medium') : 'Not processed yet' }}</dd>
+            </div>
+          </dl>
+        }
+
+        @if (activePanel() === 'versions') {
+          <div class="versions-list">
+            @for (version of versions(); track version.id) {
+              <div class="version-row">
+                <strong>Version {{ version.versionNumber }}</strong>
+                <span>{{ version.uploadedAt | date: 'medium' }}</span>
+                <span class="status-badge" [class]="getStatusClass(version.status)">
+                  {{ getStatusLabel(version.status) }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activePanel() === 'chunks' && chunks(); as chunkPage) {
+          <div class="chunks-list">
+            @for (chunk of chunkPage.items; track chunk.id) {
+              <article class="chunk-row">
+                <header>
+                  <strong>Chunk {{ chunk.chunkIndex }}</strong>
+                  <span>{{ chunk.createdAt | date: 'short' }}</span>
+                </header>
+                <p>{{ chunk.content | slice: 0 : 520 }}{{ chunk.content.length > 520 ? '...' : '' }}</p>
+              </article>
+            } @empty {
+              <div class="empty-state compact">
+                <mat-icon>segment</mat-icon>
+                <h3>No chunks available</h3>
+                <p>This document may still be pending indexing.</p>
+              </div>
+            }
+          </div>
+
+          <mat-paginator
+            [length]="chunkPage.totalCount"
+            [pageIndex]="chunkPage.page - 1"
+            [pageSize]="chunkPage.pageSize"
+            [pageSizeOptions]="[10, 25, 50]"
+            (page)="chunkPageChanged($event)" />
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

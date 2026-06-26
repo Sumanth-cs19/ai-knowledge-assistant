@@ -1,0 +1,27 @@
+.chat-input {
+  align-items: flex-start;
+  background: #ffffff;
+  border-top: 1px solid #dbe3ef;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 1rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+textarea {
+  resize: none;
+}
+
+button {
+  min-height: 56px;
+}
+
+@media (max-width: 640px) {
+  .chat-input {
+    grid-template-columns: 1fr;
+  }
+}

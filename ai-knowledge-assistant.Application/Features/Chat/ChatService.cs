@@ -106,7 +106,7 @@ public sealed class ChatService : IChatService
             sources);
     }
 
-    public async IAsyncEnumerable<string> AskStreamAsync(
+    public async IAsyncEnumerable<ChatStreamEvent> AskStreamAsync(
         Guid userId,
         ChatAskRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -139,7 +139,7 @@ public sealed class ChatService : IChatService
                            cancellationToken))
         {
             answerBuilder.Append(token);
-            yield return token;
+            yield return new ChatStreamEvent("token", token);
         }
 
         var answer = answerBuilder.ToString();
@@ -168,11 +168,23 @@ public sealed class ChatService : IChatService
 
         conversation.UpdatedAt = assistantMessage.CreatedAt;
         await _conversationRepository.AddMessagesAsync(conversation, [userMessage, assistantMessage], cancellationToken);
+        var sources = matches.Select(ToSource).ToList();
         _logger.LogInformation(
             "Completed streaming chat request for conversation {ConversationId} and user {UserId} with {SourceCount} sources",
             conversation.Id,
             userId,
             matches.Count);
+
+        yield return new ChatStreamEvent(
+            "complete",
+            Response: new ChatResponse(
+                conversation.Id,
+                userMessage.Id,
+                assistantMessage.Id,
+                userMessage.Content,
+                assistantMessage.Content,
+                assistantMessage.CreatedAt,
+                sources));
     }
 
     private static string BuildPrompt(string question, IReadOnlyCollection<SearchResultResponse> matches)

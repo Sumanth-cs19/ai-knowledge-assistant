@@ -1,0 +1,22 @@
+.citation {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+}
+
+.citation-link {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #1e40af;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 0.35rem;
+  padding: 0;
+}
+
+p {
+  color: #475569;
+  margin: 0;
+}

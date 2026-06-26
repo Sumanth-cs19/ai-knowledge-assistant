@@ -1,0 +1,10 @@
+.global-loading-overlay {
+  align-items: center;
+  background: rgba(248, 250, 252, 0.65);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  pointer-events: none;
+  position: fixed;
+  z-index: 2000;
+}

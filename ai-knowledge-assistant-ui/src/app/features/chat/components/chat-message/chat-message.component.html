@@ -1,0 +1,42 @@
+<article class="message" [class.user]="message.role === 'user'" [class.assistant]="message.role === 'assistant'">
+  <div class="avatar">
+    <mat-icon>{{ message.role === 'user' ? 'person' : 'smart_toy' }}</mat-icon>
+  </div>
+
+  <div class="bubble">
+    <header>
+      <strong>{{ message.role === 'user' ? 'You' : 'Assistant' }}</strong>
+      <span>{{ message.createdAt | date: 'shortTime' }}</span>
+    </header>
+
+    @if (message.role === 'assistant') {
+      <div #contentEl class="markdown" [innerHTML]="markdown()"></div>
+      @if (message.isStreaming) {
+        <app-typing-indicator />
+      }
+    } @else {
+      <p class="plain-message">{{ message.content }}</p>
+    }
+
+    @if (message.role === 'assistant' && !message.isStreaming) {
+      <div class="message-actions">
+        <button mat-button type="button" (click)="copyMessage.emit(message.content)">
+          <mat-icon>content_copy</mat-icon>
+          Copy
+        </button>
+        <button mat-button type="button" (click)="regenerate.emit()">
+          <mat-icon>refresh</mat-icon>
+          Regenerate
+        </button>
+      </div>
+    }
+
+    @if (message.citations?.length) {
+      <div class="citations">
+        @for (citation of message.citations; track citation.chunkId) {
+          <app-citation [citation]="citation" (openDocument)="openDocument.emit($event)" />
+        }
+      </div>
+    }
+  </div>
+</article>

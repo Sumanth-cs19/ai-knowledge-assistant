@@ -1,0 +1,265 @@
+<section class="admin-page">
+  <header class="page-header">
+    <div>
+      <h2>Admin Dashboard</h2>
+      <p>Manage users, roles, analytics, and operational visibility.</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="refresh()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </header>
+
+  @if (isLoading()) {
+    <mat-card appearance="outlined" class="state-card">
+      <mat-card-content>
+        <mat-progress-bar mode="indeterminate" />
+        <p>Loading admin data...</p>
+      </mat-card-content>
+    </mat-card>
+  } @else if (errorMessage()) {
+    <mat-card appearance="outlined" class="state-card error-state">
+      <mat-card-content>
+        <mat-icon>lock</mat-icon>
+        <h3>Admin access unavailable</h3>
+        <p>{{ errorMessage() }}</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <section class="metric-grid">
+      @for (metric of metricCards(); track metric.label) {
+        <mat-card appearance="outlined" class="metric-card">
+          <mat-icon>{{ metric.icon }}</mat-icon>
+          <span>{{ metric.label }}</span>
+          <strong>{{ metric.value }}</strong>
+        </mat-card>
+      }
+    </section>
+
+    <mat-tab-group>
+      <mat-tab label="Users">
+        <section class="tab-panel">
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>group</mat-icon>
+              <mat-card-title>User Management</mat-card-title>
+              <mat-card-subtitle>Search, inspect, update roles, and remove users.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <section class="filters">
+                <mat-form-field appearance="outline">
+                  <mat-label>Search users</mat-label>
+                  <mat-icon matPrefix>search</mat-icon>
+                  <input matInput type="search" [formControl]="searchControl" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Role</mat-label>
+                  <mat-select [formControl]="roleFilterControl">
+                    <mat-option value="all">All roles</mat-option>
+                    @for (role of roles(); track role.id) {
+                      <mat-option [value]="role.id">{{ role.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </section>
+
+              @if (users().length === 0) {
+                <div class="empty-state">
+                  <mat-icon>group_off</mat-icon>
+                  <h3>No users found</h3>
+                  <p>No users are available in the system yet.</p>
+                </div>
+              } @else if (hasNoUserResults()) {
+                <div class="empty-state">
+                  <mat-icon>manage_search</mat-icon>
+                  <h3>No matching users</h3>
+                  <p>Try a different email search or role filter.</p>
+                </div>
+              } @else {
+                <div class="user-list">
+                  @for (user of pagedUsers(); track user.id) {
+                    <article class="user-row">
+                      <div>
+                        <strong>{{ user.email }}</strong>
+                        <span>Created {{ user.createdAt | date: 'medium' }}</span>
+                      </div>
+
+                      <mat-form-field appearance="outline">
+                        <mat-label>Role</mat-label>
+                        <mat-select [value]="user.role.id" (selectionChange)="updateRole(user, $event.value)">
+                          @for (role of roles(); track role.id) {
+                            <mat-option [value]="role.id">{{ role.name }}</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+
+                      <div class="user-actions">
+                        <button mat-icon-button type="button" aria-label="View user" (click)="viewUser(user)">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" aria-label="Delete user" (click)="deleteUser(user)">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    </article>
+                  }
+                </div>
+
+                <mat-paginator
+                  [length]="filteredUsers().length"
+                  [pageIndex]="pageIndex()"
+                  [pageSize]="pageSize()"
+                  [pageSizeOptions]="[5, 10, 20]"
+                  (page)="pageChanged($event)" />
+              }
+            </mat-card-content>
+          </mat-card>
+
+          @if (selectedUser(); as user) {
+            <mat-card appearance="outlined" class="details-card">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>person</mat-icon>
+                <mat-card-title>{{ user.email }}</mat-card-title>
+                <mat-card-subtitle>User details</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <dl class="details-grid">
+                  <div>
+                    <dt>User id</dt>
+                    <dd>{{ user.id }}</dd>
+                  </div>
+                  <div>
+                    <dt>Role</dt>
+                    <dd>{{ user.role.name }}</dd>
+                  </div>
+                  <div>
+                    <dt>Role description</dt>
+                    <dd>{{ user.role.description }}</dd>
+                  </div>
+                  <div>
+                    <dt>Created</dt>
+                    <dd>{{ user.createdAt | date: 'medium' }}</dd>
+                  </div>
+                </dl>
+              </mat-card-content>
+            </mat-card>
+          }
+        </section>
+      </mat-tab>
+
+      <mat-tab label="Analytics">
+        <section class="tab-panel analytics-grid">
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>description</mat-icon>
+              <mat-card-title>Document Analytics</mat-card-title>
+              <mat-card-subtitle>Indexing health and source usage.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (documentAnalytics(); as docs) {
+                <div class="mini-metrics">
+                  <div><span>Pending</span><strong>{{ docs.pendingDocuments }}</strong></div>
+                  <div><span>Processing</span><strong>{{ docs.processingDocuments }}</strong></div>
+                  <div><span>Indexed</span><strong>{{ docs.indexedDocuments }}</strong></div>
+                  <div><span>Failed</span><strong>{{ docs.failedDocuments }}</strong></div>
+                </div>
+
+                <h3>Most cited documents</h3>
+                <div class="compact-list">
+                  @for (document of docs.mostUsedDocumentsInCitations; track document.documentId) {
+                    <div>
+                      <span>{{ document.originalFileName }}</span>
+                      <strong>{{ document.citationCount }} citations</strong>
+                    </div>
+                  } @empty {
+                    <p class="muted">No citations recorded yet.</p>
+                  }
+                </div>
+
+                <h3>Recent processing failures</h3>
+                <div class="compact-list">
+                  @for (failure of docs.recentProcessingFailures; track failure.documentId) {
+                    <div>
+                      <span>{{ failure.originalFileName }}</span>
+                      <strong>{{ failure.errorMessage || 'Processing failed' }}</strong>
+                    </div>
+                  } @empty {
+                    <p class="muted">No recent failures.</p>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>forum</mat-icon>
+              <mat-card-title>Chat Analytics</mat-card-title>
+              <mat-card-subtitle>Conversation and message activity.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (chatAnalytics(); as chat) {
+                <div class="mini-metrics">
+                  <div><span>Total</span><strong>{{ chat.totalConversations }}</strong></div>
+                  <div><span>Archived</span><strong>{{ chat.archivedConversations }}</strong></div>
+                  <div><span>User messages</span><strong>{{ chat.userMessages }}</strong></div>
+                  <div><span>AI messages</span><strong>{{ chat.assistantMessages }}</strong></div>
+                  <div><span>Last 7 days</span><strong>{{ chat.conversationsLast7Days }}</strong></div>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>thumbs_up_down</mat-icon>
+              <mat-card-title>Feedback Analytics</mat-card-title>
+              <mat-card-subtitle>Answer quality signal from users.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (feedbackAnalytics(); as feedback) {
+                <div class="mini-metrics">
+                  <div><span>Total</span><strong>{{ feedback.totalFeedback }}</strong></div>
+                  <div><span>Average</span><strong>{{ feedback.averageRating === null ? 'N/A' : (feedback.averageRating | number: '1.1-1') }}</strong></div>
+                  <div><span>Positive</span><strong>{{ feedback.positiveFeedback }}</strong></div>
+                  <div><span>Negative</span><strong>{{ feedback.negativeFeedback }}</strong></div>
+                </div>
+
+                <h3>Rating breakdown</h3>
+                <div class="compact-list">
+                  @for (rating of feedback.ratingBreakdown; track rating.rating) {
+                    <div>
+                      <span>{{ rating.rating }} stars</span>
+                      <strong>{{ rating.count }}</strong>
+                    </div>
+                  } @empty {
+                    <p class="muted">No feedback submitted yet.</p>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>person_add</mat-icon>
+              <mat-card-title>User Analytics</mat-card-title>
+              <mat-card-subtitle>Account growth indicators.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (userAnalytics(); as usersSummary) {
+                <div class="mini-metrics">
+                  <div><span>Total users</span><strong>{{ usersSummary.totalUsers }}</strong></div>
+                  <div><span>Active users</span><strong>{{ usersSummary.activeUsers }}</strong></div>
+                  <div><span>New 7 days</span><strong>{{ usersSummary.newUsersLast7Days }}</strong></div>
+                  <div><span>New 30 days</span><strong>{{ usersSummary.newUsersLast30Days }}</strong></div>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </section>
+      </mat-tab>
+    </mat-tab-group>
+  }
+</section>

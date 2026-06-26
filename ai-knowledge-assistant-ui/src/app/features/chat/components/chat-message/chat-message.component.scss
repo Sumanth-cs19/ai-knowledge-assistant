@@ -1,0 +1,98 @@
+.message {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.message.user {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.message.user .avatar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.message.user .bubble {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.avatar {
+  align-items: center;
+  background: #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.assistant .avatar {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.bubble {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 1rem;
+}
+
+header {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  font-size: 0.8125rem;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+header strong {
+  color: #172033;
+}
+
+.plain-message {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.markdown {
+  color: #172033;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.markdown :is(p, ul, ol, pre) {
+  margin: 0 0 0.75rem;
+}
+
+.markdown :is(p, ul, ol, pre):last-child {
+  margin-bottom: 0;
+}
+
+.markdown pre {
+  background: #0f172a;
+  border-radius: 8px;
+  color: #e2e8f0;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.citations {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

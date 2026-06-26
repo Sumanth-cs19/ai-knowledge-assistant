@@ -1,0 +1,37 @@
+:root {
+  --app-primary: #3f51b5;
+  --app-accent: #1e88e5;
+  --app-background: #f6f8fb;
+  --app-border: #dbe3ef;
+  --app-text: #172033;
+  --app-muted: #64748b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--app-background);
+  color: var(--app-text);
+  font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+}
+
+a {
+  color: var(--app-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.mat-mdc-card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}

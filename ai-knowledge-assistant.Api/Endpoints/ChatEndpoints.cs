@@ -43,9 +43,9 @@ public static class ChatEndpoints
                 context.Response.Headers.Connection = "keep-alive";
                 context.Response.ContentType = "text/event-stream";
 
-                await foreach (var token in chatService.AskStreamAsync(userId, request, cancellationToken))
+                await foreach (var streamEvent in chatService.AskStreamAsync(userId, request, cancellationToken))
                 {
-                    var payload = JsonSerializer.Serialize(new { token });
+                    var payload = JsonSerializer.Serialize(streamEvent);
                     await context.Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
                 }

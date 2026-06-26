@@ -1,0 +1,65 @@
+<section class="auth-page">
+  <h2>Create Account</h2>
+  <p>Start building a searchable knowledge library.</p>
+
+  @if (backendErrors.length > 0) {
+    <div class="backend-errors" role="alert">
+      @for (error of backendErrors; track error) {
+        <span>{{ error }}</span>
+      }
+    </div>
+  }
+
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" autocomplete="email" formControlName="email" />
+      @if (hasError('email', 'required')) {
+        <mat-error>Email is required.</mat-error>
+      }
+      @if (hasError('email', 'email')) {
+        <mat-error>Enter a valid email address.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" autocomplete="new-password" formControlName="password" />
+      @if (hasError('password', 'required')) {
+        <mat-error>Password is required.</mat-error>
+      }
+      @if (hasError('password', 'minlength')) {
+        <mat-error>Password must be at least 8 characters.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="password-strength">
+      <div>
+        <span>Password strength</span>
+        <strong>{{ passwordStrengthLabel() }}</strong>
+      </div>
+      <mat-progress-bar mode="determinate" [value]="passwordStrength()" />
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Confirm Password</mat-label>
+      <input matInput type="password" autocomplete="new-password" formControlName="confirmPassword" />
+      @if (hasError('confirmPassword', 'required')) {
+        <mat-error>Confirm your password.</mat-error>
+      }
+      @if (hasPasswordMismatch()) {
+        <mat-error>Passwords do not match.</mat-error>
+      }
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
+      @if (isSubmitting) {
+        Creating Account
+      } @else {
+        Create Account
+      }
+    </button>
+  </form>
+
+  <a routerLink="/login">Already have an account</a>
+</section>

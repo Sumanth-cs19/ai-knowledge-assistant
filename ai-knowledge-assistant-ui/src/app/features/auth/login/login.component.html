@@ -1,0 +1,46 @@
+<section class="auth-page">
+  <h2>Welcome Back</h2>
+  <p>Sign in to continue to your knowledge workspace.</p>
+
+  @if (backendErrors.length > 0) {
+    <div class="backend-errors" role="alert">
+      @for (error of backendErrors; track error) {
+        <span>{{ error }}</span>
+      }
+    </div>
+  }
+
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" autocomplete="email" formControlName="email" />
+      @if (hasError('email', 'required')) {
+        <mat-error>Email is required.</mat-error>
+      }
+      @if (hasError('email', 'email')) {
+        <mat-error>Enter a valid email address.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" autocomplete="current-password" formControlName="password" />
+      @if (hasError('password', 'required')) {
+        <mat-error>Password is required.</mat-error>
+      }
+      @if (hasError('password', 'minlength')) {
+        <mat-error>Password must be at least 8 characters.</mat-error>
+      }
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting">
+      @if (isSubmitting) {
+        Signing In
+      } @else {
+        Sign In
+      }
+    </button>
+  </form>
+
+  <a routerLink="/register">Create an account</a>
+</section>

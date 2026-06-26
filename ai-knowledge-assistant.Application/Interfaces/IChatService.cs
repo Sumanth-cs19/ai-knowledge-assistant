@@ -6,7 +6,7 @@ public interface IChatService
 {
     Task<ChatResponse> AskAsync(Guid userId, ChatAskRequest request, CancellationToken cancellationToken = default);
 
-    IAsyncEnumerable<string> AskStreamAsync(
+    IAsyncEnumerable<ChatStreamEvent> AskStreamAsync(
         Guid userId,
         ChatAskRequest request,
         CancellationToken cancellationToken = default);

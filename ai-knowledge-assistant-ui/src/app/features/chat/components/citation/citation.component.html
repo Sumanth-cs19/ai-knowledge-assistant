@@ -1,0 +1,14 @@
+<mat-expansion-panel class="citation" hideToggle>
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <button type="button" class="citation-link" (click)="openDocument.emit(citation.documentId); $event.stopPropagation()">
+        <mat-icon>article</mat-icon>
+        {{ citation.originalFileName || citation.documentName }}
+      </button>
+    </mat-panel-title>
+    <mat-panel-description>
+      Chunk {{ citation.chunkIndex }} · {{ citation.similarity | percent: '1.0-1' }}
+    </mat-panel-description>
+  </mat-expansion-panel-header>
+  <p>{{ citation.snippet }}</p>
+</mat-expansion-panel>

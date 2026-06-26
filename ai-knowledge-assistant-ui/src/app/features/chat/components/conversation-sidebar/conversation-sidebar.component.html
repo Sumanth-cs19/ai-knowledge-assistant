@@ -1,0 +1,46 @@
+<aside class="conversation-sidebar">
+  <button mat-flat-button color="primary" type="button" class="new-chat" (click)="newChat.emit()">
+    <mat-icon>add</mat-icon>
+    New Chat
+  </button>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Search conversations</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput type="search" [formControl]="searchControl" />
+  </mat-form-field>
+
+  <nav class="conversation-list" aria-label="Conversations">
+    @for (conversation of filteredConversations(); track conversation.id) {
+      <button
+        type="button"
+        class="conversation-item"
+        [class.active]="conversation.id === activeConversationId"
+        (click)="openConversation.emit(conversation.id)">
+        <span>{{ conversation.title }}</span>
+        <small>{{ conversation.updatedAt | date: 'short' }}</small>
+      </button>
+
+      <button mat-icon-button class="conversation-actions" [matMenuTriggerFor]="conversationMenu" aria-label="Conversation actions">
+        <mat-icon>more_horiz</mat-icon>
+      </button>
+
+      <mat-menu #conversationMenu="matMenu">
+        <button mat-menu-item type="button" (click)="renameConversation.emit(conversation)">
+          <mat-icon>edit</mat-icon>
+          <span>Rename</span>
+        </button>
+        <button mat-menu-item type="button" (click)="archiveConversation.emit(conversation)">
+          <mat-icon>archive</mat-icon>
+          <span>Archive</span>
+        </button>
+        <button mat-menu-item type="button" (click)="deleteConversation.emit(conversation)">
+          <mat-icon>delete</mat-icon>
+          <span>Delete</span>
+        </button>
+      </mat-menu>
+    } @empty {
+      <div class="empty">No conversations yet.</div>
+    }
+  </nav>
+</aside>

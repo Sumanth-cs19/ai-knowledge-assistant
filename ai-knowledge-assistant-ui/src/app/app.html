@@ -1,0 +1,7 @@
+<router-outlet />
+
+@if (loadingService.isLoading()) {
+  <div class="global-loading-overlay" aria-live="polite">
+    <app-loading-spinner [diameter]="48" label="Loading request" />
+  </div>
+}

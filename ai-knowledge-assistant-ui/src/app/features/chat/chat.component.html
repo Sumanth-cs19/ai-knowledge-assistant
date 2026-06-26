@@ -1,0 +1,73 @@
+<section class="chat-shell">
+  <mat-sidenav-container class="chat-container">
+    <mat-sidenav
+      class="chat-sidebar"
+      [mode]="sidebarOpened() ? 'side' : 'over'"
+      [opened]="sidebarOpened()">
+      <app-conversation-sidebar
+        [conversations]="conversations()"
+        [activeConversationId]="activeConversationId()"
+        (newChat)="newChat()"
+        (openConversation)="openConversation($event)"
+        (renameConversation)="renameConversation($event)"
+        (deleteConversation)="deleteConversation($event)"
+        (archiveConversation)="archiveConversation($event)" />
+    </mat-sidenav>
+
+    <mat-sidenav-content class="chat-content">
+      <header class="chat-header">
+        <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle conversations">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <div>
+          <h2>AI Chat</h2>
+          <p>
+            @if (generationStage() === 'searching') {
+              Searching documents...
+            } @else if (generationStage() === 'thinking') {
+              Thinking...
+            } @else if (generationStage() === 'generating') {
+              Generating response...
+            } @else {
+              Ask questions grounded in uploaded documents.
+            }
+          </p>
+        </div>
+      </header>
+
+      @if (isGenerating()) {
+        <mat-progress-bar mode="indeterminate" />
+      }
+
+      <main #messageViewport class="messages">
+        @if (!hasMessages()) {
+          <div class="empty-chat">
+            <mat-icon>auto_awesome</mat-icon>
+            <h3>Start a new conversation</h3>
+            <p>Ask about your uploaded documents. Answers will include source citations when available.</p>
+          </div>
+        } @else {
+          @for (message of messages(); track message.id) {
+            <app-chat-message
+              [message]="message"
+              (copyMessage)="copyMessage($event)"
+              (regenerate)="regenerate()"
+              (openDocument)="openDocument($event)" />
+          }
+        }
+      </main>
+
+      @if (generationStage() === 'searching' || generationStage() === 'thinking') {
+        <div class="stage-indicator">
+          <app-typing-indicator />
+          <span>{{ generationStage() === 'searching' ? 'Searching documents...' : 'Thinking...' }}</span>
+        </div>
+      }
+
+      <app-chat-input
+        [isGenerating]="isGenerating()"
+        (sendMessage)="sendMessage($event)"
+        (stopGeneration)="stopGeneration()" />
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</section>
