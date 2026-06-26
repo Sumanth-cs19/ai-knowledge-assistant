@@ -28,6 +28,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-documents',
@@ -43,7 +44,8 @@ import {
     MatMenuModule,
     MatPaginatorModule,
     MatProgressBarModule,
-    MatSelectModule
+    MatSelectModule,
+    SkeletonComponent
   ],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
@@ -69,6 +71,7 @@ export class DocumentsComponent {
   protected readonly isDragOver = signal(false);
   protected readonly isUploading = signal(false);
   protected readonly uploadProgress = signal(0);
+  protected readonly isLoadingDocuments = signal(true);
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal(5);
 
@@ -235,8 +238,13 @@ export class DocumentsComponent {
   }
 
   private loadDocuments(): void {
+    this.isLoadingDocuments.set(true);
     this.documentService.getMyDocuments().subscribe({
-      next: (response) => this.documents.set(response)
+      next: (response) => {
+        this.documents.set(response);
+        this.isLoadingDocuments.set(false);
+      },
+      error: () => this.isLoadingDocuments.set(false)
     });
   }
 

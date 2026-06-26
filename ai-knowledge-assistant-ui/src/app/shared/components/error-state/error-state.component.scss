@@ -1,0 +1,31 @@
+.error-state {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  min-height: 60vh;
+  padding: 2rem;
+  place-items: center;
+  text-align: center;
+}
+
+mat-icon {
+  color: #b91c1c;
+  font-size: 3rem;
+  height: 3rem;
+  width: 3rem;
+}
+
+span {
+  color: var(--app-muted);
+  font-weight: 700;
+}
+
+h1 {
+  color: var(--app-text);
+  margin: 0;
+}
+
+p {
+  color: var(--app-muted);
+  margin: 0 0 0.75rem;
+}

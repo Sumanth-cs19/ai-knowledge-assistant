@@ -1,0 +1,7 @@
+<section class="error-state" role="alert">
+  <mat-icon>error_outline</mat-icon>
+  <span>{{ statusCode() }}</span>
+  <h1>{{ title() }}</h1>
+  <p>{{ message() }}</p>
+  <a mat-flat-button color="primary" [routerLink]="actionLink()">{{ actionText() }}</a>
+</section>

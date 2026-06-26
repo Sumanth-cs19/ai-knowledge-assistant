@@ -82,6 +82,20 @@ header strong {
   color: #e2e8f0;
   overflow-x: auto;
   padding: 1rem;
+  position: relative;
+}
+
+.markdown ::ng-deep .copy-code-button {
+  background: #334155;
+  border: 0;
+  border-radius: 6px;
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
 }
 
 .message-actions {

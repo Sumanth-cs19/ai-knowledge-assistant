@@ -39,7 +39,7 @@
         <mat-progress-bar mode="indeterminate" />
       }
 
-      <main #messageViewport class="messages">
+      <main #messageViewport class="messages" (scroll)="onMessagesScroll()" aria-live="polite">
         @if (!hasMessages()) {
           <div class="empty-chat">
             <mat-icon>auto_awesome</mat-icon>
@@ -56,6 +56,12 @@
           }
         }
       </main>
+
+      @if (showScrollToBottom()) {
+        <button mat-fab color="primary" type="button" class="scroll-bottom" aria-label="Scroll to latest message" (click)="scrollToBottomButton()">
+          <mat-icon>south</mat-icon>
+        </button>
+      }
 
       @if (generationStage() === 'searching' || generationStage() === 'thinking') {
         <div class="stage-indicator">

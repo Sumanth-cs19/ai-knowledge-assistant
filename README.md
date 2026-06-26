@@ -2,6 +2,8 @@
 
 AI Knowledge Assistant is a .NET 8 backend for uploading documents, indexing their text with pgvector, and answering user questions through a retrieval-augmented generation (RAG) chat flow.
 
+The repository also includes an Angular frontend in `ai-knowledge-assistant-ui` for authentication, document management, RAG chat, admin analytics, profile, and settings.
+
 ## Architecture
 
 The solution follows Clean Architecture:
@@ -21,6 +23,9 @@ The solution follows Clean Architecture:
 - OpenTelemetry tracing foundation
 - Swagger / OpenAPI
 - GitHub Actions CI
+- Angular 21 frontend
+- Angular Material, Bootstrap 5, ngx-toastr, marked, and highlight.js
+- Nginx static hosting for the production frontend container
 
 ## Local Setup
 
@@ -52,16 +57,53 @@ dotnet run --project .\ai-knowledge-assistant.Api
 
 Swagger is available in Development at `/swagger`.
 
+## Frontend Setup
+
+From the Angular project folder:
+
+```powershell
+cd .\ai-knowledge-assistant-ui
+npm install
+npm run build
+npm start
+```
+
+The development UI runs at `http://localhost:4200` and uses `https://localhost:5001/api` from `environment.development.ts`.
+
+Frontend environments:
+
+- `src/environments/environment.development.ts`: local development API URL
+- `src/environments/environment.production.ts`: container/Nginx API proxy URL `/api`
+- `src/environments/environment.ts`: default fallback configuration
+
+Frontend architecture:
+
+- `core`: guards, interceptors, services, models, constants
+- `shared`: reusable loading, empty, error, dialog, table, pagination, and utility components
+- `layouts`: auth and dashboard shells
+- `features`: auth, dashboard, documents, chat, conversations, admin, profile, settings
+
+Screenshot placeholders:
+
+- `docs/screenshots/login.png`
+- `docs/screenshots/documents.png`
+- `docs/screenshots/chat.png`
+- `docs/screenshots/admin.png`
+
+Architecture diagram reference:
+
+- `docs/architecture/frontend-backend-rag-flow.md`
+
 ## Docker Compose
 
-Run the API with PostgreSQL and pgvector:
+Run the UI, API, PostgreSQL, and pgvector:
 
 ```powershell
 copy .env.example .env
 docker compose up --build
 ```
 
-The API is exposed at `http://localhost:5000` when using the local override file, and PostgreSQL is exposed on `localhost:5432`.
+The UI is exposed at `http://localhost:4200`, the API is exposed at `http://localhost:5000` when using the local override file, and PostgreSQL is exposed on `localhost:5432`.
 
 ## Environment Variables
 
@@ -94,7 +136,15 @@ Configuration supports `appsettings.json`, environment-specific appsettings file
 
 ## CI/CD
 
-GitHub Actions restores, builds, runs `dotnet test`, and validates the API Docker build when `ai-knowledge-assistant.Api/Dockerfile` exists.
+GitHub Actions restores, builds, runs `dotnet test`, installs the Angular frontend, runs the frontend lint/build validation, runs frontend tests, and validates API/UI Docker builds when Dockerfiles exist.
+
+Frontend Docker build:
+
+```powershell
+docker build -f .\ai-knowledge-assistant-ui\Dockerfile -t ai-knowledge-assistant-ui .
+```
+
+The frontend container uses Nginx with SPA routing fallback and proxies `/api/*` to the API service in Docker Compose.
 
 ## Tests
 
@@ -165,10 +215,35 @@ docker build -f .\ai-knowledge-assistant.Api\Dockerfile -t ai-knowledge-assistan
 docker run --rm -p 8080:8080 --env-file .env ai-knowledge-assistant-api
 ```
 
+Frontend production deployment:
+
+```powershell
+cd .\ai-knowledge-assistant-ui
+npm ci
+npm run build
+docker build -f .\Dockerfile -t ai-knowledge-assistant-ui ..
+```
+
+For full-stack deployment:
+
+```powershell
+docker compose up --build
+```
+
 ## Build
 
 ```powershell
 dotnet restore
 dotnet build
 dotnet test
+```
+
+Frontend:
+
+```powershell
+cd .\ai-knowledge-assistant-ui
+npm install
+npm run lint
+npm test
+npm run build
 ```

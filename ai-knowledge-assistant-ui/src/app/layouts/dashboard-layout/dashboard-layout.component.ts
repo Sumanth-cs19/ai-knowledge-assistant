@@ -9,6 +9,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ToastrService } from 'ngx-toastr';
 
 import { AuthService } from '../../core/services/auth.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 
 interface NavigationItem {
   icon: string;
@@ -36,6 +37,7 @@ export class DashboardLayoutComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly toastr = inject(ToastrService);
+  protected readonly isCompactSidebar = inject(PreferencesService).isCompactSidebar;
 
   protected readonly currentUser = this.authService.currentUser;
   protected readonly navigationItems = computed(() => this.allNavigationItems.filter((item) => {

@@ -1,18 +1,22 @@
 .dashboard-shell {
-  background: #f6f8fb;
+  background: var(--app-background);
   min-height: 100vh;
 }
 
 .sidebar {
-  background: #ffffff;
-  border-right: 1px solid #dbe3ef;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
   width: 260px;
+}
+
+.sidebar.compact {
+  width: 76px;
 }
 
 .sidebar-brand {
   align-items: center;
-  border-bottom: 1px solid #e5eaf2;
-  color: #172033;
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text);
   display: flex;
   font-weight: 700;
   gap: 0.75rem;
@@ -37,9 +41,9 @@
 }
 
 .topbar {
-  background: #ffffff;
-  border-bottom: 1px solid #dbe3ef;
-  color: #172033;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -80,8 +84,8 @@
 
 .footer {
   align-items: center;
-  border-top: 1px solid #dbe3ef;
-  color: #64748b;
+  border-top: 1px solid var(--app-border);
+  color: var(--app-muted);
   display: flex;
   font-size: 0.875rem;
   justify-content: space-between;

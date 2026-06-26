@@ -49,6 +49,7 @@ export class ChatComponent {
   protected readonly isGenerating = signal(false);
   protected readonly generationStage = signal<'idle' | 'searching' | 'thinking' | 'generating'>('idle');
   protected readonly sidebarOpened = signal(true);
+  protected readonly showScrollToBottom = signal(false);
   protected readonly hasMessages = computed(() => this.messages().length > 0);
 
   private readonly chatService = inject(ChatService);
@@ -216,6 +217,19 @@ export class ChatComponent {
     this.sidebarOpened.update((value) => !value);
   }
 
+  protected onMessagesScroll(): void {
+    const element = this.messageViewport?.nativeElement;
+    if (!element) {
+      return;
+    }
+
+    this.showScrollToBottom.set(element.scrollHeight - element.scrollTop - element.clientHeight > 240);
+  }
+
+  protected scrollToBottomButton(): void {
+    this.scrollToBottom();
+  }
+
   private loadConversations(): void {
     this.conversationService.getConversations().subscribe({
       next: (response) => this.conversations.set(response.items.filter((conversation) => !conversation.isArchived))
@@ -294,6 +308,7 @@ export class ChatComponent {
       const element = this.messageViewport?.nativeElement;
       if (element) {
         element.scrollTop = element.scrollHeight;
+        this.showScrollToBottom.set(false);
       }
     });
   }

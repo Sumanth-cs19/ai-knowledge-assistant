@@ -56,7 +56,11 @@
         </mat-form-field>
       </section>
 
-      @if (documents().length === 0) {
+      @if (isLoadingDocuments()) {
+        <div class="document-skeleton">
+          <app-skeleton [rows]="4" />
+        </div>
+      } @else if (documents().length === 0) {
         <div class="empty-state">
           <mat-icon>folder_open</mat-icon>
           <h3>No documents uploaded</h3>

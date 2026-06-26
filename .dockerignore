@@ -4,6 +4,10 @@
 **/.vscode/
 **/.git/
 **/.gitignore
+**/node_modules/
+**/dist/
+**/.angular/
+**/coverage/
 **/uploads/
 Dockerfile
 docker-compose*

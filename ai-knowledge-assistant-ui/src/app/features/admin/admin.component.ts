@@ -29,6 +29,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-admin',
@@ -44,7 +45,8 @@ import {
     MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
-    MatTabsModule
+    MatTabsModule,
+    SkeletonComponent
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'

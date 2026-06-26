@@ -1,12 +1,157 @@
-<section class="page">
-  <mat-card appearance="outlined">
-    <mat-card-header>
-      <mat-icon mat-card-avatar>settings</mat-icon>
-      <mat-card-title>Settings</mat-card-title>
-      <mat-card-subtitle>Configure workspace behavior, notifications, and AI defaults.</mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="placeholder-panel">Settings controls will be added here.</div>
-    </mat-card-content>
-  </mat-card>
+<section class="settings-page">
+  <header class="page-header">
+    <div>
+      <h2>Settings</h2>
+      <p>Configure local workspace preferences and account actions.</p>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="savePreferences()">
+      <mat-icon>save</mat-icon>
+      Save Settings
+    </button>
+  </header>
+
+  <mat-tab-group>
+    <mat-tab label="Preferences">
+      <form class="tab-panel" [formGroup]="preferencesForm">
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>palette</mat-icon>
+            <mat-card-title>Theme</mat-card-title>
+            <mat-card-subtitle>Choose how the application should render globally.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <mat-radio-group formControlName="theme" class="radio-grid" (change)="themeChanged()">
+              <mat-radio-button value="light">Light mode</mat-radio-button>
+              <mat-radio-button value="dark">Dark mode</mat-radio-button>
+              <mat-radio-button value="system">System default</mat-radio-button>
+            </mat-radio-group>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>smart_toy</mat-icon>
+            <mat-card-title>AI Settings</mat-card-title>
+            <mat-card-subtitle>Read-only until backend configuration updates are available.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="readonly-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Selected provider</mat-label>
+                <input matInput value="Backend configured provider" readonly />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Selected model</mat-label>
+                <input matInput value="Backend configured model" readonly />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Embedding model</mat-label>
+                <input matInput value="Backend configured embedding model" readonly />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>API base URL</mat-label>
+                <input matInput [value]="apiBaseUrl" readonly />
+              </mat-form-field>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>tune</mat-icon>
+            <mat-card-title>User Preferences</mat-card-title>
+            <mat-card-subtitle>Local behavior for chat and navigation.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="preferences-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Default chat behavior</mat-label>
+                <mat-select formControlName="defaultChatBehavior">
+                  <mat-option value="new-chat">Start a new chat</mat-option>
+                  <mat-option value="continue-last">Continue last conversation</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-slide-toggle formControlName="streamingEnabled">Enable streaming responses</mat-slide-toggle>
+              <mat-slide-toggle formControlName="compactSidebar">Use compact sidebar</mat-slide-toggle>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </form>
+    </mat-tab>
+
+    <mat-tab label="Account">
+      <section class="tab-panel">
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>password</mat-icon>
+            <mat-card-title>Change Password</mat-card-title>
+            <mat-card-subtitle>Validation-only placeholder until a backend endpoint is available.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <form class="password-form" [formGroup]="passwordForm" (ngSubmit)="validatePasswordForm()">
+              <mat-form-field appearance="outline">
+                <mat-label>Old password</mat-label>
+                <input matInput type="password" formControlName="oldPassword" autocomplete="current-password" />
+                @if (hasPasswordError('oldPassword', 'required')) {
+                  <mat-error>Old password is required.</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>New password</mat-label>
+                <input matInput type="password" formControlName="newPassword" autocomplete="new-password" />
+                @if (hasPasswordError('newPassword', 'required')) {
+                  <mat-error>New password is required.</mat-error>
+                }
+                @if (hasPasswordError('newPassword', 'minlength')) {
+                  <mat-error>Password must be at least 8 characters.</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Confirm password</mat-label>
+                <input matInput type="password" formControlName="confirmPassword" autocomplete="new-password" />
+                @if (hasPasswordError('confirmPassword', 'required')) {
+                  <mat-error>Confirm the new password.</mat-error>
+                }
+                @if (hasPasswordMismatch()) {
+                  <mat-error>Passwords do not match.</mat-error>
+                }
+              </mat-form-field>
+
+              <button mat-stroked-button type="submit">
+                <mat-icon>check_circle</mat-icon>
+                Validate Password
+              </button>
+            </form>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>manage_accounts</mat-icon>
+            <mat-card-title>Account Actions</mat-card-title>
+            <mat-card-subtitle>Session and local preference controls.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="actions-grid">
+              <button mat-stroked-button type="button" disabled>
+                <mat-icon>logout</mat-icon>
+                Logout From All Devices
+              </button>
+              <button mat-stroked-button type="button" (click)="clearLocalSession()">
+                <mat-icon>delete_sweep</mat-icon>
+                Clear Local Session
+              </button>
+              <button mat-stroked-button type="button" (click)="resetPreferences()">
+                <mat-icon>restart_alt</mat-icon>
+                Reset Local Preferences
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </mat-tab>
+  </mat-tab-group>
 </section>

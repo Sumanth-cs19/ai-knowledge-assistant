@@ -1,4 +1,14 @@
 services:
+  ui:
+    build:
+      context: .
+      dockerfile: ai-knowledge-assistant-ui/Dockerfile
+    image: ai-knowledge-assistant-ui:local
+    depends_on:
+      - api
+    ports:
+      - "4200:80"
+
   api:
     build:
       context: .

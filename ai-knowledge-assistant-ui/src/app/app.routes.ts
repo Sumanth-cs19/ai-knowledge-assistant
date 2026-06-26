@@ -6,6 +6,8 @@ import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
 import { ForbiddenComponent } from './shared/components/forbidden/forbidden.component';
 import { NotFoundComponent } from './shared/components/not-found/not-found.component';
+import { ServerErrorComponent } from './shared/components/server-error/server-error.component';
+import { UnauthorizedComponent } from './shared/components/unauthorized/unauthorized.component';
 
 export const routes: Routes = [
   {
@@ -65,6 +67,14 @@ export const routes: Routes = [
       {
         path: 'forbidden',
         component: ForbiddenComponent
+      },
+      {
+        path: 'unauthorized',
+        component: UnauthorizedComponent
+      },
+      {
+        path: 'server-error',
+        component: ServerErrorComponent
       }
     ]
   },

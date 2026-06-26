@@ -1,0 +1,23 @@
+.table-wrapper {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: auto;
+}
+
+table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+th {
+  background: var(--app-surface-muted);
+  font-weight: 700;
+}

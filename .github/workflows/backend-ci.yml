@@ -33,3 +33,34 @@ jobs:
       - name: Docker build validation
         if: hashFiles('ai-knowledge-assistant.Api/Dockerfile') != ''
         run: docker build -f ai-knowledge-assistant.Api/Dockerfile -t ai-knowledge-assistant-api:ci .
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ai-knowledge-assistant-ui/package-lock.json
+
+      - name: Frontend install
+        if: hashFiles('ai-knowledge-assistant-ui/package.json') != ''
+        working-directory: ai-knowledge-assistant-ui
+        run: npm ci
+
+      - name: Frontend lint
+        if: hashFiles('ai-knowledge-assistant-ui/package.json') != ''
+        working-directory: ai-knowledge-assistant-ui
+        run: npm run lint
+
+      - name: Frontend test
+        if: hashFiles('ai-knowledge-assistant-ui/package.json') != ''
+        working-directory: ai-knowledge-assistant-ui
+        run: npm test
+
+      - name: Frontend build
+        if: hashFiles('ai-knowledge-assistant-ui/package.json') != ''
+        working-directory: ai-knowledge-assistant-ui
+        run: npm run build
+
+      - name: Frontend Docker build validation
+        if: hashFiles('ai-knowledge-assistant-ui/Dockerfile') != ''
+        run: docker build -f ai-knowledge-assistant-ui/Dockerfile -t ai-knowledge-assistant-ui:ci .

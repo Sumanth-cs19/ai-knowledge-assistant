@@ -1,0 +1,20 @@
+<div class="table-wrapper" role="region" aria-label="Data table" tabindex="0">
+  <table>
+    <thead>
+      <tr>
+        @for (column of columns(); track column) {
+          <th scope="col">{{ column }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track $index) {
+        <tr>
+          @for (column of columns(); track column) {
+            <td>{{ row[column] }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

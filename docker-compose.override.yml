@@ -1,4 +1,8 @@
 services:
+  ui:
+    ports:
+      - "4200:80"
+
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development

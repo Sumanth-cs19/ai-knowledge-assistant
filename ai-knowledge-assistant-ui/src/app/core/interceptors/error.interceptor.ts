@@ -1,10 +1,12 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { catchError, throwError } from 'rxjs';
 
 export const errorInterceptor: HttpInterceptorFn = (request, next) => {
   const toastr = inject(ToastrService);
+  const router = inject(Router);
 
   return next(request).pipe(
     catchError((error: unknown) => {
@@ -13,6 +15,12 @@ export const errorInterceptor: HttpInterceptorFn = (request, next) => {
 
         if (error.status !== 401 || !request.url.includes('/auth/refresh')) {
           toastr.error(message, getErrorTitle(error.status));
+        }
+
+        if (error.status === 403) {
+          void router.navigate(['/forbidden']);
+        } else if (error.status >= 500) {
+          void router.navigate(['/server-error']);
         }
       }
 

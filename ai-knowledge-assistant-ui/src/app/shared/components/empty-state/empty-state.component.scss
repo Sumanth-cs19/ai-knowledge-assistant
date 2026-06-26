@@ -1,0 +1,28 @@
+.empty-state {
+  align-items: center;
+  background: var(--app-surface-muted);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  color: var(--app-muted);
+  display: grid;
+  justify-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+mat-icon {
+  color: var(--app-muted);
+  font-size: 2rem;
+  height: 2rem;
+  margin-bottom: 0.5rem;
+  width: 2rem;
+}
+
+h3 {
+  color: var(--app-text);
+  margin: 0;
+}
+
+p {
+  margin: 0.25rem 0 0;
+}

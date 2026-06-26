@@ -22,6 +22,7 @@ export class ChatMessageComponent implements AfterViewChecked {
   @Output() regenerate = new EventEmitter<void>();
   @Output() openDocument = new EventEmitter<string>();
   @ViewChild('contentEl') private readonly contentEl?: ElementRef<HTMLElement>;
+  private copyButtonsAttached = false;
 
   constructor(private readonly sanitizer: DomSanitizer) {}
 
@@ -29,9 +30,11 @@ export class ChatMessageComponent implements AfterViewChecked {
     this.contentEl?.nativeElement.querySelectorAll('pre code').forEach((block) => {
       hljs.highlightElement(block as HTMLElement);
     });
+    this.attachCopyButtons();
   }
 
   protected markdown(): SafeHtml {
+    this.copyButtonsAttached = false;
     const html = marked.parse(this.message.content || '', {
       async: false,
       breaks: true,
@@ -39,5 +42,30 @@ export class ChatMessageComponent implements AfterViewChecked {
     }) as string;
 
     return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  private attachCopyButtons(): void {
+    const host = this.contentEl?.nativeElement;
+    if (!host || this.copyButtonsAttached) {
+      return;
+    }
+
+    host.querySelectorAll('pre').forEach((pre) => {
+      if (pre.querySelector('.copy-code-button')) {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'copy-code-button';
+      button.textContent = 'Copy code';
+      button.setAttribute('aria-label', 'Copy code block');
+      button.addEventListener('click', () => {
+        void navigator.clipboard.writeText(pre.textContent?.replace('Copy code', '').trim() ?? '');
+      });
+      pre.prepend(button);
+    });
+
+    this.copyButtonsAttached = true;
   }
 }
