@@ -1,0 +1,46 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ai-knowledge-assistant.Api/Dockerfile
+    image: ai-knowledge-assistant-api:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-AIKnowledgeAssistant};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-change-me}
+      Jwt__Issuer: ${JWT_ISSUER:-ai-knowledge-assistant}
+      Jwt__Audience: ${JWT_AUDIENCE:-ai-knowledge-assistant-api}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY is required}
+      AI__Provider: ${AI_PROVIDER:-Ollama}
+      AI__ApiKey: ${AI_API_KEY:-}
+      AI__Endpoint: ${AI_ENDPOINT:-}
+      AI__Model: ${AI_MODEL:-local-rag}
+      AI__EmbeddingModel: ${AI_EMBEDDING_MODEL:-local-hash-embedding}
+      Storage__UploadsPath: /app/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - api_uploads:/app/uploads
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-AIKnowledgeAssistant}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-AIKnowledgeAssistant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  api_uploads:
+  postgres_data:

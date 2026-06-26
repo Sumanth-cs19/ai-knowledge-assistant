@@ -1,7 +1,9 @@
 namespace ai_knowledge_assistant.Application.Interfaces;
 
-public interface ILlmService
+public interface IAIProvider
 {
+    string Name { get; }
+
     Task<string> GenerateAnswerAsync(
         string prompt,
         IReadOnlyCollection<string> contextChunks,

@@ -25,5 +25,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.CreatedAt)
             .IsRequired();
+
+        builder.Property(user => user.RoleId)
+            .IsRequired();
+
+        builder.HasOne(user => user.Role)
+            .WithMany(role => role.Users)
+            .HasForeignKey(user => user.RoleId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

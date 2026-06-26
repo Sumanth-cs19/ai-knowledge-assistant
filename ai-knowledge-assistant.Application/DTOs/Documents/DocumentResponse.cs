@@ -1,3 +1,5 @@
+using ai_knowledge_assistant.Domain.Enums;
+
 namespace ai_knowledge_assistant.Application.DTOs.Documents;
 
 public sealed record DocumentResponse(
@@ -6,4 +8,9 @@ public sealed record DocumentResponse(
     string OriginalFileName,
     string ContentType,
     string FilePath,
-    DateTime UploadedAt);
+    DateTime UploadedAt,
+    DocumentStatus Status,
+    string? ErrorMessage,
+    DateTime? ProcessedAt,
+    int VersionNumber,
+    bool IsDeleted);

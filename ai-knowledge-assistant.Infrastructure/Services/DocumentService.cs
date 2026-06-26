@@ -1,10 +1,13 @@
 using ai_knowledge_assistant.Application.DTOs.Documents;
+using ai_knowledge_assistant.Application.DTOs.Common;
 using ai_knowledge_assistant.Application.Exceptions;
 using ai_knowledge_assistant.Application.Interfaces;
 using ai_knowledge_assistant.Domain.Entities;
+using ai_knowledge_assistant.Domain.Enums;
 using ai_knowledge_assistant.Infrastructure.Identity;
 using ai_knowledge_assistant.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ai_knowledge_assistant.Infrastructure.Services;
@@ -24,16 +27,19 @@ public sealed class DocumentService : IDocumentService
     };
 
     private readonly ApplicationDbContext _context;
-    private readonly IDocumentIndexingService _documentIndexingService;
+    private readonly IDocumentProcessingQueue _documentProcessingQueue;
+    private readonly ILogger<DocumentService> _logger;
     private readonly StorageSettings _storageSettings;
 
     public DocumentService(
         ApplicationDbContext context,
-        IDocumentIndexingService documentIndexingService,
+        IDocumentProcessingQueue documentProcessingQueue,
+        ILogger<DocumentService> logger,
         IOptions<StorageSettings> storageSettings)
     {
         _context = context;
-        _documentIndexingService = documentIndexingService;
+        _documentProcessingQueue = documentProcessingQueue;
+        _logger = logger;
         _storageSettings = storageSettings.Value;
     }
 
@@ -80,22 +86,25 @@ public sealed class DocumentService : IDocumentService
             OriginalFileName = safeOriginalFileName,
             ContentType = request.ContentType,
             FilePath = fullFilePath,
-            UploadedAt = DateTime.UtcNow
+            UploadedAt = DateTime.UtcNow,
+            Status = DocumentStatus.Pending,
+            VersionNumber = await GetNextVersionNumberAsync(request.UserId, safeOriginalFileName, cancellationToken)
         };
-
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
             _context.Documents.Add(document);
             await _context.SaveChangesAsync(cancellationToken);
-            await _documentIndexingService.IndexAsync(document, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            await _documentProcessingQueue.QueueAsync(document.Id, cancellationToken);
+            _logger.LogInformation(
+                "Document uploaded by user {UserId}. DocumentId={DocumentId}. OriginalFileName={OriginalFileName}. Version={VersionNumber}",
+                request.UserId,
+                document.Id,
+                document.OriginalFileName,
+                document.VersionNumber);
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
-
             if (File.Exists(fullFilePath))
             {
                 File.Delete(fullFilePath);
@@ -113,16 +122,102 @@ public sealed class DocumentService : IDocumentService
     {
         return await _context.Documents
             .AsNoTracking()
-            .Where(document => document.UserId == userId)
+            .Where(document => document.UserId == userId && !document.IsDeleted)
             .OrderByDescending(document => document.UploadedAt)
-            .Select(document => new DocumentResponse(
-                document.Id,
-                document.FileName,
-                document.OriginalFileName,
-                document.ContentType,
-                document.FilePath,
-                document.UploadedAt))
+            .Select(document => ToResponse(document))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResponse<DocumentResponse>> GetUserDocumentsAsync(
+        Guid userId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var safePage = Math.Max(page, 1);
+        var safePageSize = Math.Clamp(pageSize <= 0 ? 20 : pageSize, 1, 100);
+        var query = _context.Documents
+            .AsNoTracking()
+            .Where(document => document.UserId == userId && !document.IsDeleted)
+            .OrderByDescending(document => document.UploadedAt);
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((safePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(document => ToResponse(document))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResponse<DocumentResponse>(items, safePage, safePageSize, total);
+    }
+
+    public async Task<DocumentResponse> GetAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await GetOwnedDocumentAsync(userId, id, cancellationToken);
+        return ToResponse(document);
+    }
+
+    public async Task DeleteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await GetOwnedDocumentAsync(userId, id, cancellationToken);
+        document.IsDeleted = true;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ReindexAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await GetOwnedDocumentAsync(userId, id, cancellationToken);
+        document.Status = DocumentStatus.Pending;
+        document.ErrorMessage = null;
+        document.ProcessedAt = null;
+        await _context.SaveChangesAsync(cancellationToken);
+        await _documentProcessingQueue.QueueAsync(document.Id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<DocumentResponse>> GetVersionsAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await GetOwnedDocumentAsync(userId, id, cancellationToken);
+        return await _context.Documents
+            .AsNoTracking()
+            .Where(version => version.UserId == userId
+                && version.OriginalFileName == document.OriginalFileName
+                && !version.IsDeleted)
+            .OrderByDescending(version => version.VersionNumber)
+            .Select(version => ToResponse(version))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResponse<DocumentChunkResponse>> GetChunksAsync(
+        Guid userId,
+        Guid id,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        _ = await GetOwnedDocumentAsync(userId, id, cancellationToken);
+        var safePage = Math.Max(page, 1);
+        var safePageSize = Math.Clamp(pageSize <= 0 ? 50 : pageSize, 1, 200);
+        var query = _context.DocumentChunks
+            .AsNoTracking()
+            .Where(chunk => chunk.DocumentId == id)
+            .OrderBy(chunk => chunk.ChunkIndex);
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((safePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(chunk => new DocumentChunkResponse(
+                chunk.Id,
+                chunk.DocumentId,
+                chunk.ChunkIndex,
+                chunk.Content,
+                chunk.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResponse<DocumentChunkResponse>(items, safePage, safePageSize, total);
     }
 
     private string GetUploadsPath()
@@ -130,6 +225,26 @@ public sealed class DocumentService : IDocumentService
         return Path.IsPathRooted(_storageSettings.UploadsPath)
             ? _storageSettings.UploadsPath
             : Path.Combine(AppContext.BaseDirectory, _storageSettings.UploadsPath);
+    }
+
+    private async Task<int> GetNextVersionNumberAsync(
+        Guid userId,
+        string originalFileName,
+        CancellationToken cancellationToken)
+    {
+        var currentMaxVersion = await _context.Documents
+            .Where(document => document.UserId == userId && document.OriginalFileName == originalFileName)
+            .Select(document => (int?)document.VersionNumber)
+            .MaxAsync(cancellationToken);
+
+        return (currentMaxVersion ?? 0) + 1;
+    }
+
+    private async Task<Document> GetOwnedDocumentAsync(Guid userId, Guid id, CancellationToken cancellationToken)
+    {
+        return await _context.Documents
+            .FirstOrDefaultAsync(document => document.Id == id && document.UserId == userId && !document.IsDeleted, cancellationToken)
+            ?? throw new NotFoundException("Document was not found.");
     }
 
     private static void ValidateUploadRequest(UploadDocumentRequest request)
@@ -175,6 +290,11 @@ public sealed class DocumentService : IDocumentService
             document.OriginalFileName,
             document.ContentType,
             document.FilePath,
-            document.UploadedAt);
+            document.UploadedAt,
+            document.Status,
+            document.ErrorMessage,
+            document.ProcessedAt,
+            document.VersionNumber,
+            document.IsDeleted);
     }
 }

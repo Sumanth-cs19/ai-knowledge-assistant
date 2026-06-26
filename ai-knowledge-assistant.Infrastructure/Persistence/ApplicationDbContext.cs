@@ -4,9 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ai_knowledge_assistant.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext : DbContext
+public class ApplicationDbContext : DbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    protected ApplicationDbContext(DbContextOptions options)
         : base(options)
     {
     }
@@ -18,6 +23,14 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<ChatFeedback> ChatFeedback => Set<ChatFeedback>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

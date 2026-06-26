@@ -4,5 +4,7 @@ public sealed record ChatSourceResponse(
     Guid DocumentId,
     Guid ChunkId,
     int ChunkIndex,
+    string DocumentName,
     string OriginalFileName,
-    double Similarity);
+    double Similarity,
+    string Snippet);

@@ -10,8 +10,4 @@ public interface IChatService
         Guid userId,
         ChatAskRequest request,
         CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyCollection<ChatHistoryResponse>> GetHistoryAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
 }

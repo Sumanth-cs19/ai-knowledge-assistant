@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ai_knowledge_assistant.Api.Authorization;
 using ai_knowledge_assistant.Application.DTOs.Search;
 using ai_knowledge_assistant.Application.Exceptions;
 using ai_knowledge_assistant.Application.Interfaces;
@@ -7,10 +8,13 @@ namespace ai_knowledge_assistant.Api.Endpoints;
 
 public static class SearchEndpoints
 {
-    public static IEndpointRouteBuilder MapSearchEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapSearchEndpoints(
+        this IEndpointRouteBuilder endpoints,
+        string prefix = "/api/search",
+        string nameSuffix = "")
     {
-        var group = endpoints.MapGroup("/api/search")
-            .RequireAuthorization()
+        var group = endpoints.MapGroup(prefix)
+            .RequireAuthorization(AuthorizationPolicies.RequireAuthenticatedUser)
             .WithTags("Search");
 
         group.MapPost("/query", async (
@@ -23,7 +27,7 @@ public static class SearchEndpoints
                 var response = await semanticSearchService.SearchAsync(userId, request, cancellationToken);
                 return Results.Ok(response);
             })
-            .WithName("SemanticSearch")
+            .WithName($"SemanticSearch{nameSuffix}")
             .WithOpenApi();
 
         return endpoints;
