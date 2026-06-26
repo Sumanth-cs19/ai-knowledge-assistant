@@ -3,4 +3,6 @@
   <Project Path="ai-knowledge-assistant.Application/ai-knowledge-assistant.Application.csproj" />
   <Project Path="ai-knowledge-assistant.Domain/ai-knowledge-assistant.Domain.csproj" />
   <Project Path="ai-knowledge-assistant.Infrastructure/ai-knowledge-assistant.Infrastructure.csproj" />
+  <Project Path="ai-knowledge-assistant.IntegrationTests/ai-knowledge-assistant.IntegrationTests.csproj" />
+  <Project Path="ai-knowledge-assistant.UnitTests/ai-knowledge-assistant.UnitTests.csproj" />
 </Solution>

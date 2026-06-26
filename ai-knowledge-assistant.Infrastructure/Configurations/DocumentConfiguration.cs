@@ -31,6 +31,20 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(document => document.UploadedAt)
             .IsRequired();
 
+        builder.Property(document => document.Status)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(32);
+
+        builder.Property(document => document.ErrorMessage)
+            .HasMaxLength(2048);
+
+        builder.Property(document => document.VersionNumber)
+            .IsRequired();
+
+        builder.Property(document => document.IsDeleted)
+            .IsRequired();
+
         builder.HasOne(document => document.User)
             .WithMany(user => user.Documents)
             .HasForeignKey(document => document.UserId)

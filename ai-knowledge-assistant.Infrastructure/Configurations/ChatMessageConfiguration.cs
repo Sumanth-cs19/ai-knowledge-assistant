@@ -12,22 +12,21 @@ public sealed class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMess
 
         builder.HasKey(message => message.Id);
 
-        builder.Property(message => message.Question)
+        builder.Property(message => message.Role)
             .IsRequired();
 
-        builder.Property(message => message.Answer)
+        builder.Property(message => message.Content)
             .IsRequired();
 
-        builder.Property(message => message.SourceReferencesJson)
-            .IsRequired()
-            .HasColumnType("jsonb");
+        builder.Property(message => message.TokenCount)
+            .IsRequired();
 
         builder.Property(message => message.CreatedAt)
             .IsRequired();
 
-        builder.HasOne(message => message.User)
-            .WithMany(user => user.ChatMessages)
-            .HasForeignKey(message => message.UserId)
+        builder.HasOne(message => message.Conversation)
+            .WithMany(conversation => conversation.Messages)
+            .HasForeignKey(message => message.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

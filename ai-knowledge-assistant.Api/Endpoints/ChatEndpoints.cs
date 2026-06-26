@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using ai_knowledge_assistant.Api.Authorization;
 using ai_knowledge_assistant.Application.DTOs.Chat;
 using ai_knowledge_assistant.Application.Exceptions;
 using ai_knowledge_assistant.Application.Interfaces;
@@ -8,10 +9,13 @@ namespace ai_knowledge_assistant.Api.Endpoints;
 
 public static class ChatEndpoints
 {
-    public static IEndpointRouteBuilder MapChatEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapChatEndpoints(
+        this IEndpointRouteBuilder endpoints,
+        string prefix = "/api/chat",
+        string nameSuffix = "")
     {
-        var group = endpoints.MapGroup("/api/chat")
-            .RequireAuthorization()
+        var group = endpoints.MapGroup(prefix)
+            .RequireAuthorization(AuthorizationPolicies.RequireAuthenticatedUser)
             .RequireRateLimiting("chat")
             .WithTags("Chat");
 
@@ -25,7 +29,7 @@ public static class ChatEndpoints
                 var response = await chatService.AskAsync(userId, request, cancellationToken);
                 return Results.Ok(response);
             })
-            .WithName("AskChat")
+            .WithName($"AskChat{nameSuffix}")
             .WithOpenApi();
 
         group.MapPost("/ask/stream", async (
@@ -48,19 +52,21 @@ public static class ChatEndpoints
 
                 await context.Response.WriteAsync("event: done\ndata: {}\n\n", cancellationToken);
             })
-            .WithName("AskChatStream")
+            .WithName($"AskChatStream{nameSuffix}")
             .WithOpenApi();
 
-        group.MapGet("/history", async (
+        group.MapPost("/messages/{messageId:guid}/feedback", async (
+                Guid messageId,
+                ChatFeedbackRequest request,
                 HttpContext context,
-                IChatService chatService,
+                IChatFeedbackService feedbackService,
                 CancellationToken cancellationToken) =>
             {
                 var userId = GetCurrentUserId(context);
-                var response = await chatService.GetHistoryAsync(userId, cancellationToken);
+                var response = await feedbackService.SubmitAsync(userId, messageId, request, cancellationToken);
                 return Results.Ok(response);
             })
-            .WithName("GetChatHistory")
+            .WithName($"SubmitChatFeedback{nameSuffix}")
             .WithOpenApi();
 
         return endpoints;
