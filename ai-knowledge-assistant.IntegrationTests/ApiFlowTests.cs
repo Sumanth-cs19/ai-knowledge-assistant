@@ -55,6 +55,24 @@ public sealed class ApiFlowTests : IClassFixture<TestApplicationFactory>
     }
 
     [Fact]
+    public async Task Login_preflight_allows_configured_frontend_origin()
+    {
+        var client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/auth/login");
+        request.Headers.Add("Origin", "http://localhost:4200");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization,content-type,accept");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(
+            "http://localhost:4200",
+            response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Contains("POST", response.Headers.GetValues("Access-Control-Allow-Methods").Single());
+    }
+
+    [Fact]
     public async Task Document_upload_and_listing_succeeds_for_authenticated_user()
     {
         var client = _factory.CreateClient();

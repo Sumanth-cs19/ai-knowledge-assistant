@@ -23,6 +23,8 @@ Log.Logger = new LoggerConfiguration()
     .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+const string frontendCorsPolicy = "Frontend";
+
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var renderPort))
 {
     builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
@@ -42,6 +44,20 @@ var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<
 JwtSettingsValidator.Validate(jwtSettings);
 
 // Add services to the container.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(frontendCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins(allowedOrigins)
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Authorization", "Content-Type", "Accept");
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -177,6 +193,8 @@ if (swaggerEnabled)
     app.UseSwaggerUI();
 }
 
+app.UseRouting();
+app.UseCors(frontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
