@@ -56,6 +56,9 @@ public static class DocumentEndpoints
             })
             .WithName($"UploadDocument{nameSuffix}")
             .Accepts<IFormFile>("multipart/form-data")
+            .Produces<DocumentResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .WithOpenApi();
 
         group.MapGet("/my-documents", async (
@@ -68,6 +71,8 @@ public static class DocumentEndpoints
                 return Results.Ok(response);
             })
             .WithName($"GetMyDocuments{nameSuffix}")
+            .Produces<DocumentResponse[]>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .WithOpenApi();
 
         group.MapGet("/", async (

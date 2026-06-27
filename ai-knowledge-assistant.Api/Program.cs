@@ -3,6 +3,7 @@ using ai_knowledge_assistant.Api.Authorization;
 using ai_knowledge_assistant.Api.Endpoints;
 using ai_knowledge_assistant.Api.Health;
 using ai_knowledge_assistant.Api.Middleware;
+using ai_knowledge_assistant.Api.OpenApi;
 using ai_knowledge_assistant.Application;
 using ai_knowledge_assistant.Application.Common;
 using ai_knowledge_assistant.Infrastructure;
@@ -21,6 +22,11 @@ Log.Logger = new LoggerConfiguration()
     .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var renderPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
+}
+
 if (!builder.Environment.IsEnvironment("Test"))
 {
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -64,6 +70,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         [securityScheme] = []
     });
+    options.OperationFilter<SwaggerExamplesOperationFilter>();
 });
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])

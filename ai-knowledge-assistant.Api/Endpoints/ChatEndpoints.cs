@@ -30,6 +30,10 @@ public static class ChatEndpoints
                 return Results.Ok(response);
             })
             .WithName($"AskChat{nameSuffix}")
+            .Produces<ChatResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
             .WithOpenApi();
 
         group.MapPost("/ask/stream", async (
@@ -67,6 +71,10 @@ public static class ChatEndpoints
                 return Results.Ok(response);
             })
             .WithName($"SubmitChatFeedback{nameSuffix}")
+            .Produces<ChatFeedbackResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .WithOpenApi();
 
         return endpoints;

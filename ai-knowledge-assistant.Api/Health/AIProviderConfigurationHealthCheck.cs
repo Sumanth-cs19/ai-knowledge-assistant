@@ -25,6 +25,13 @@ public sealed class AIProviderConfigurationHealthCheck : IHealthCheck
                 "AI provider, model, and embedding model must be configured."));
         }
 
+        if (_settings.Provider.Equals("Groq", StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(_settings.ApiKey) || string.IsNullOrWhiteSpace(_settings.Endpoint)))
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                "Groq API key and endpoint must be configured."));
+        }
+
         return Task.FromResult(HealthCheckResult.Healthy("AI provider configuration is present."));
     }
 }

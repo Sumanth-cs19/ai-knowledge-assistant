@@ -7,10 +7,12 @@ using ai_knowledge_assistant.Infrastructure;
 using ai_knowledge_assistant.Infrastructure.Identity;
 using ai_knowledge_assistant.Infrastructure.Persistence;
 using ai_knowledge_assistant.Infrastructure.Services;
+using ai_knowledge_assistant.Infrastructure.Services.AI;
 using ai_knowledge_assistant.UnitTests.TestSupport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Pgvector;
 
 namespace ai_knowledge_assistant.UnitTests;
@@ -51,6 +53,54 @@ public sealed class SemanticSearchAndProviderTests
         var provider = services.GetRequiredService<IAIProvider>();
 
         Assert.Equal("Groq", provider.Name);
+    }
+
+    [Fact]
+    public async Task Groq_provider_uses_chat_completion_api_and_keeps_embeddings_local()
+    {
+        var handler = new StubHttpMessageHandler();
+        var settings = Options.Create(new AISettings
+        {
+            Provider = "Groq",
+            ApiKey = "safe-fake-api-key",
+            Endpoint = "https://api.groq.test/openai/v1/chat/completions",
+            Model = "llama-test",
+            EmbeddingModel = "local-hash-embedding"
+        });
+        var provider = new GroqProvider(
+            new HttpClient(handler),
+            settings,
+            NullLogger<GroqProvider>.Instance);
+
+        var answer = await provider.GenerateAnswerAsync("Use this context.", ["Grounded context"]);
+        var embedding = await provider.GenerateEmbeddingAsync("Grounded context");
+
+        Assert.Equal("Grounded answer", answer);
+        Assert.Equal(1536, embedding.Length);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Equal("Bearer", handler.AuthorizationScheme);
+    }
+
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        public string? AuthorizationScheme { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            AuthorizationScheme = request.Headers.Authorization?.Scheme;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"choices\":[{\"message\":{\"content\":\"Grounded answer\"}}]}",
+                    System.Text.Encoding.UTF8,
+                    "application/json")
+            });
+        }
     }
 
 }

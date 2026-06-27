@@ -28,7 +28,7 @@ public abstract class LocalProviderBase : IAIProvider, IEmbeddingProvider
 
     public int Dimensions => 1536;
 
-    public Task<string> GenerateAnswerAsync(
+    public virtual Task<string> GenerateAnswerAsync(
         string prompt,
         IReadOnlyCollection<string> contextChunks,
         CancellationToken cancellationToken = default)
@@ -71,7 +71,7 @@ public abstract class LocalProviderBase : IAIProvider, IEmbeddingProvider
         }
     }
 
-    public async IAsyncEnumerable<string> StreamAnswerAsync(
+    public virtual async IAsyncEnumerable<string> StreamAnswerAsync(
         string prompt,
         IReadOnlyCollection<string> contextChunks,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

@@ -50,7 +50,10 @@ public static class DependencyInjection
         services.AddHostedService<DocumentProcessingWorker>();
         services.AddScoped<OpenAIProvider>();
         services.AddScoped<AzureOpenAIProvider>();
-        services.AddScoped<GroqProvider>();
+        services.AddHttpClient<GroqProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
         services.AddScoped<OllamaProvider>();
         services.AddScoped<IAIProvider>(ResolveAIProvider);
         services.AddScoped<IEmbeddingProvider>(provider => (IEmbeddingProvider)ResolveAIProvider(provider));

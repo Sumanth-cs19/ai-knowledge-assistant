@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ai_knowledge_assistant.Api.Authorization;
+using ai_knowledge_assistant.Application.DTOs.Common;
 using ai_knowledge_assistant.Application.DTOs.Conversations;
 using ai_knowledge_assistant.Application.Exceptions;
 using ai_knowledge_assistant.Application.Interfaces;
@@ -42,6 +43,8 @@ public static class ConversationEndpoints
                 return Results.Ok(response);
             })
             .WithName($"GetConversations{nameSuffix}")
+            .Produces<PagedResponse<ConversationResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .WithOpenApi();
 
         group.MapGet("/{id:guid}", async (
@@ -110,6 +113,9 @@ public static class ConversationEndpoints
                 return Results.Ok(response);
             })
             .WithName($"GetConversationMessages{nameSuffix}")
+            .Produces<PagedResponse<ChatMessageResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .WithOpenApi();
 
         return endpoints;

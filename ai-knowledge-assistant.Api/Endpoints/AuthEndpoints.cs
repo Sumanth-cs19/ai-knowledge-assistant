@@ -23,6 +23,9 @@ public static class AuthEndpoints
             })
             .AllowAnonymous()
             .WithName($"Register{nameSuffix}")
+            .Produces<AuthResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .WithOpenApi();
 
         group.MapPost("/login", async (
@@ -35,6 +38,9 @@ public static class AuthEndpoints
             })
             .AllowAnonymous()
             .WithName($"Login{nameSuffix}")
+            .Produces<AuthResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .WithOpenApi();
 
         group.MapPost("/refresh", async (

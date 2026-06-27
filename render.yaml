@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: ai-knowledge-assistant-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./ai-knowledge-assistant.Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: ai-knowledge-assistant
+      - key: Jwt__Audience
+        value: ai-knowledge-assistant-api
+      - key: AI__Provider
+        value: Groq
+      - key: AI__ApiKey
+        sync: false
+      - key: AI__Endpoint
+        value: https://api.groq.com/openai/v1/chat/completions
+      - key: AI__Model
+        value: llama-3.1-8b-instant
+      - key: AI__EmbeddingModel
+        value: local-hash-embedding
+      - key: Storage__UploadsPath
+        value: /tmp/uploads
