@@ -3,6 +3,7 @@ using ai_knowledge_assistant.Infrastructure.Identity;
 using ai_knowledge_assistant.Infrastructure.Persistence;
 using ai_knowledge_assistant.UnitTests.TestSupport;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 
 namespace ai_knowledge_assistant.UnitTests;
 
@@ -47,5 +48,32 @@ public sealed class StartupInitializationTests
         };
 
         JwtSettingsValidator.Validate(settings);
+    }
+
+    [Fact]
+    public void PostgreSql_uri_is_normalized_for_npgsql()
+    {
+        const string uri = "postgresql://neon_owner:p%40ssword@ep-example-pooler.neon.tech/neondb?sslmode=require&channel_binding=require";
+
+        var normalized = PostgreSqlConnectionString.Normalize(uri);
+        var builder = new NpgsqlConnectionStringBuilder(normalized);
+
+        Assert.Equal("ep-example-pooler.neon.tech", builder.Host);
+        Assert.Equal("neondb", builder.Database);
+        Assert.Equal("neon_owner", builder.Username);
+        Assert.Equal("p@ssword", builder.Password);
+        Assert.Equal(SslMode.Require, builder.SslMode);
+        Assert.Equal(ChannelBinding.Require, builder.ChannelBinding);
+    }
+
+    [Fact]
+    public void Invalid_connection_string_error_does_not_echo_secret_value()
+    {
+        const string invalid = "postgresql://super-secret@host/database";
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            PostgreSqlConnectionString.Normalize(invalid));
+
+        Assert.DoesNotContain("super-secret", exception.Message, StringComparison.Ordinal);
     }
 }

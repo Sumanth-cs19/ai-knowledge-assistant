@@ -17,12 +17,14 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var configuredConnectionString = configuration.GetConnectionString("DefaultConnection");
 
-        if (string.IsNullOrWhiteSpace(connectionString))
+        if (string.IsNullOrWhiteSpace(configuredConnectionString))
         {
             throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
         }
+
+        var connectionString = PostgreSqlConnectionString.Normalize(configuredConnectionString);
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString, npgsqlOptions =>

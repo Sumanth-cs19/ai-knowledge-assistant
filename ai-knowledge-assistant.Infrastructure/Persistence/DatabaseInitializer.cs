@@ -26,8 +26,8 @@ public static class DatabaseInitializer
         catch (Exception exception)
         {
             logger.LogCritical(
-                exception,
-                "Database startup initialization failed. Verify the production connection, pgvector extension, and migration state");
+                "Database startup initialization failed. FailureType={FailureType}. Verify the production connection, pgvector extension, and migration state",
+                exception.GetType().Name);
             throw;
         }
     }

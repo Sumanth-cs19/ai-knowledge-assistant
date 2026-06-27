@@ -19,7 +19,7 @@ Render free web services can spin down while idle and use an ephemeral filesyste
 4. Copy both connection strings:
    - **Direct connection:** host does not contain `-pooler`; use it for EF migrations.
    - **Pooled connection:** host contains `-pooler`; use it for the Render application.
-5. Convert the selected connection into Npgsql key/value format if Neon displays a PostgreSQL URI:
+5. The API accepts Neon PostgreSQL URIs and Npgsql key/value connection strings. Npgsql format remains useful for local tooling:
 
 ```text
 Host=ep-example-pooler.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=REPLACE_ME;SSL Mode=Require;Channel Binding=Require
@@ -107,7 +107,7 @@ If you do not use the Blueprint:
 
 | Variable | Example or guidance | Secret |
 | --- | --- | --- |
-| `ConnectionStrings__DefaultConnection` | Pooled Neon Npgsql connection with `SSL Mode=Require` | Yes |
+| `ConnectionStrings__DefaultConnection` | Pooled Neon URI or Npgsql connection with SSL required | Yes |
 | `Jwt__SigningKey` | Random value at least 32 characters long | Yes |
 | `Jwt__Issuer` | `ai-knowledge-assistant` | No |
 | `Jwt__Audience` | `ai-knowledge-assistant-api` | No |

@@ -20,11 +20,13 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connectionString))
+        var configuredConnectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(configuredConnectionString))
         {
             throw new InvalidOperationException("Connection string 'DefaultConnection' is required for EF Core design-time operations.");
         }
+
+        var connectionString = PostgreSqlConnectionString.Normalize(configuredConnectionString);
 
         Console.WriteLine($"EF design-time configuration base path: {apiSettingsPath}");
         Console.WriteLine($"EF design-time environment: {environment}");
