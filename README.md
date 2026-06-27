@@ -73,7 +73,7 @@ The development UI runs at `http://localhost:4200` and uses `https://localhost:5
 Frontend environments:
 
 - `src/environments/environment.development.ts`: local development API URL
-- `src/environments/environment.production.ts`: container/Nginx API proxy URL `/api`
+- `src/environments/environment.production.ts`: deployed Render API URL
 - `src/environments/environment.ts`: default fallback configuration
 
 Frontend architecture:
@@ -223,6 +223,17 @@ npm ci
 npm run build
 docker build -f .\Dockerfile -t ai-knowledge-assistant-ui ..
 ```
+
+Vercel deployment:
+
+1. Import the GitHub repository into Vercel.
+2. Set the project Root Directory to `ai-knowledge-assistant-ui`.
+3. Select the Angular framework preset.
+4. Use `npm run build` as the Build Command.
+5. Use `dist/ai-knowledge-assistant-ui/browser` as the Output Directory.
+6. Deploy. The committed `vercel.json` provides the Angular routing fallback.
+
+The production Angular environment calls `https://ai-knowledge-assistant-api-h4bx.onrender.com/api`. Local `ng serve` continues to use `https://localhost:5001/api` from `environment.development.ts`.
 
 For full-stack deployment:
 
