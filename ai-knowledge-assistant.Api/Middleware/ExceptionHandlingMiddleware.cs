@@ -55,6 +55,17 @@ public sealed class ExceptionHandlingMiddleware
                     extensions: GetProblemExtensions(context))
                 .ExecuteAsync(context);
         }
+        catch (ApplicationConfigurationException exception)
+        {
+            _logger.LogError(exception, "Application configuration or reference data validation failed.");
+
+            await Results.Problem(
+                    title: "Application configuration error",
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    extensions: GetProblemExtensions(context))
+                .ExecuteAsync(context);
+        }
         catch (AIProviderException exception)
         {
             _logger.LogError(exception, "AI provider request failed.");

@@ -8,6 +8,7 @@ using ai_knowledge_assistant.Application;
 using ai_knowledge_assistant.Application.Common;
 using ai_knowledge_assistant.Infrastructure;
 using ai_knowledge_assistant.Infrastructure.Identity;
+using ai_knowledge_assistant.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
@@ -38,6 +39,7 @@ if (!builder.Environment.IsEnvironment("Test"))
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("JWT settings are not configured.");
+JwtSettingsValidator.Validate(jwtSettings);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
@@ -147,6 +149,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+if (!app.Environment.IsEnvironment("Test"))
+{
+    await app.Services.InitializeDatabaseAsync();
+}
 
 // Configure the HTTP request pipeline.
 app.UseMiddleware<CorrelationIdMiddleware>();

@@ -39,9 +39,62 @@ public sealed class AuthService : IAuthService
         var email = NormalizeEmail(request.Email);
         ValidateCredentials(email, request.Password);
 
-        if (await _userRepository.ExistsByEmailAsync(email, cancellationToken))
+        bool emailExists;
+        try
         {
-            throw new ConflictException("A user with this email already exists.");
+            _logger.LogDebug("Checking whether a registration email already exists");
+            emailExists = await _userRepository.ExistsByEmailAsync(email, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Registration database check failed during {Operation}. Verify connectivity and migration state",
+                nameof(IUserRepository.ExistsByEmailAsync));
+            throw new ApplicationConfigurationException(
+                "Registration is unavailable because the database is not reachable or initialized.");
+        }
+
+        if (emailExists)
+        {
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(RegisterRequest.Email)] = ["A user with this email already exists."]
+            });
+        }
+
+        bool userRoleExists;
+        try
+        {
+            userRoleExists = await _userRepository.RoleExistsAsync(DefaultRoles.UserRoleId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Registration role check failed for role {RoleName} ({RoleId})",
+                DefaultRoles.User,
+                DefaultRoles.UserRoleId);
+            throw new ApplicationConfigurationException(
+                "Registration is unavailable because required role data could not be verified.");
+        }
+
+        if (!userRoleExists)
+        {
+            _logger.LogCritical(
+                "Required registration role {RoleName} ({RoleId}) is missing. Verify database migration and seed initialization",
+                DefaultRoles.User,
+                DefaultRoles.UserRoleId);
+            throw new ApplicationConfigurationException(
+                "Required role 'User' is missing. Database initialization has not completed.");
         }
 
         var user = new User

@@ -42,6 +42,19 @@ public sealed class ApiFlowTests : IClassFixture<TestApplicationFactory>
     }
 
     [Fact]
+    public async Task Duplicate_registration_returns_bad_request()
+    {
+        var client = _factory.CreateClient();
+        var request = new RegisterRequest($"duplicate-{Guid.NewGuid():N}@example.com", "Password123!");
+
+        var firstResponse = await client.PostAsJsonAsync("/api/auth/register", request);
+        await EnsureSuccessAsync(firstResponse);
+        var duplicateResponse = await client.PostAsJsonAsync("/api/auth/register", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, duplicateResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Document_upload_and_listing_succeeds_for_authenticated_user()
     {
         var client = _factory.CreateClient();

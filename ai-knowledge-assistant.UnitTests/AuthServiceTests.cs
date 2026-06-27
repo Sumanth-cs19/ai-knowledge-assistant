@@ -39,6 +39,47 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task Register_rejects_duplicate_email_as_validation_error()
+    {
+        await using var context = TestDbContextFactory.Create();
+        var service = CreateService(context);
+        var request = new RegisterRequest("duplicate@example.com", "Password123!");
+        await service.RegisterAsync(request);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => service.RegisterAsync(request));
+
+        Assert.Contains(nameof(RegisterRequest.Email), exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Register_reports_database_initialization_failure_from_email_check()
+    {
+        var context = TestDbContextFactory.Create();
+        var service = CreateService(context);
+        await context.DisposeAsync();
+
+        var exception = await Assert.ThrowsAsync<ApplicationConfigurationException>(() =>
+            service.RegisterAsync(new RegisterRequest("user@example.com", "Password123!")));
+
+        Assert.Contains("database", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Register_reports_missing_default_user_role()
+    {
+        await using var context = TestDbContextFactory.Create();
+        context.Roles.RemoveRange(context.Roles);
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+
+        var exception = await Assert.ThrowsAsync<ApplicationConfigurationException>(() =>
+            service.RegisterAsync(new RegisterRequest("user@example.com", "Password123!")));
+
+        Assert.Contains(DefaultRoles.User, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(context.Users);
+    }
+
+    [Fact]
     public async Task Refresh_rotates_refresh_token_and_revokes_old_token()
     {
         await using var context = TestDbContextFactory.Create();
