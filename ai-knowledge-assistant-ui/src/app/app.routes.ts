@@ -49,7 +49,8 @@ export const routes: Routes = [
       },
       {
         path: 'conversations',
-        loadComponent: () => import('./features/conversations/conversations.component').then((m) => m.ConversationsComponent)
+        pathMatch: 'full',
+        redirectTo: 'chat'
       },
       {
         path: 'profile',

@@ -1,14 +1,16 @@
-<form class="chat-input" (ngSubmit)="submit()">
+<form class="chat-input" [formGroup]="form" (ngSubmit)="submit($event)">
   <mat-form-field appearance="outline">
     <mat-label>Ask a question</mat-label>
     <textarea
+      #messageInput
       matInput
       rows="1"
       cdkTextareaAutosize
       cdkAutosizeMinRows="1"
       cdkAutosizeMaxRows="6"
       [maxlength]="maxLength"
-      [formControl]="messageControl"
+      [readonly]="isUnavailable"
+      formControlName="message"
       (keydown)="handleKeydown($event)"></textarea>
     <mat-hint align="end">{{ messageControl.value.length }}/{{ maxLength }}</mat-hint>
   </mat-form-field>
@@ -19,7 +21,7 @@
       Stop
     </button>
   } @else {
-    <button mat-flat-button color="primary" type="submit" [disabled]="!messageControl.value.trim()">
+    <button mat-flat-button color="primary" type="submit" [disabled]="isUnavailable || !messageControl.value.trim()">
       <mat-icon>send</mat-icon>
       Send
     </button>

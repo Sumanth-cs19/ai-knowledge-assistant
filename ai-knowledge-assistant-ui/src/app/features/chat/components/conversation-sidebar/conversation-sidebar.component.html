@@ -1,46 +1,67 @@
 <aside class="conversation-sidebar">
-  <button mat-flat-button color="primary" type="button" class="new-chat" (click)="newChat.emit()">
-    <mat-icon>add</mat-icon>
-    New Chat
-  </button>
-
-  <mat-form-field appearance="outline">
-    <mat-label>Search conversations</mat-label>
-    <mat-icon matPrefix>search</mat-icon>
-    <input matInput type="search" [formControl]="searchControl" />
-  </mat-form-field>
+  <header class="sidebar-header">
+    <div>
+      <span class="eyebrow">Workspace</span>
+      <h2>Chats</h2>
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      class="new-chat"
+      aria-label="Start a new chat"
+      [disabled]="isCreatingConversation"
+      (click)="newChat.emit()">
+      <mat-icon>{{ isCreatingConversation ? 'hourglass_top' : 'add' }}</mat-icon>
+    </button>
+  </header>
 
   <nav class="conversation-list" aria-label="Conversations">
-    @for (conversation of filteredConversations(); track conversation.id) {
-      <button
-        type="button"
-        class="conversation-item"
-        [class.active]="conversation.id === activeConversationId"
-        (click)="openConversation.emit(conversation.id)">
-        <span>{{ conversation.title }}</span>
-        <small>{{ conversation.updatedAt | date: 'short' }}</small>
-      </button>
+    @for (group of conversationGroups(); track group.label) {
+      <section class="conversation-group" [attr.aria-label]="group.label">
+        <h3>{{ group.label }}</h3>
+        @for (conversation of group.conversations; track conversation.id) {
+          <div class="conversation-entry" [class.active]="conversation.id === activeConversationId">
+            <button
+              type="button"
+              class="conversation-item"
+              [attr.aria-current]="conversation.id === activeConversationId ? 'page' : null"
+              (click)="openConversation.emit(conversation.id)">
+              <mat-icon>chat_bubble_outline</mat-icon>
+              <span>{{ conversation.title }}</span>
+            </button>
 
-      <button mat-icon-button class="conversation-actions" [matMenuTriggerFor]="conversationMenu" aria-label="Conversation actions">
-        <mat-icon>more_horiz</mat-icon>
-      </button>
+            <button
+              mat-icon-button
+              type="button"
+              class="conversation-actions"
+              [matMenuTriggerFor]="conversationMenu"
+              [attr.aria-label]="'Actions for ' + conversation.title">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
 
-      <mat-menu #conversationMenu="matMenu">
-        <button mat-menu-item type="button" (click)="renameConversation.emit(conversation)">
-          <mat-icon>edit</mat-icon>
-          <span>Rename</span>
-        </button>
-        <button mat-menu-item type="button" (click)="archiveConversation.emit(conversation)">
-          <mat-icon>archive</mat-icon>
-          <span>Archive</span>
-        </button>
-        <button mat-menu-item type="button" (click)="deleteConversation.emit(conversation)">
-          <mat-icon>delete</mat-icon>
-          <span>Delete</span>
-        </button>
-      </mat-menu>
+            <mat-menu #conversationMenu="matMenu">
+              <button mat-menu-item type="button" (click)="renameConversation.emit(conversation)">
+                <mat-icon>edit</mat-icon>
+                <span>Rename</span>
+              </button>
+              <button mat-menu-item type="button" (click)="archiveConversation.emit(conversation)">
+                <mat-icon>archive</mat-icon>
+                <span>Archive</span>
+              </button>
+              <button mat-menu-item type="button" (click)="deleteConversation.emit(conversation)">
+                <mat-icon>delete</mat-icon>
+                <span>Delete</span>
+              </button>
+            </mat-menu>
+          </div>
+        }
+      </section>
     } @empty {
-      <div class="empty">No conversations yet.</div>
+      <div class="empty">
+        <mat-icon>forum</mat-icon>
+        <span>No chats yet</span>
+        <small>Start a new chat to ask about your documents.</small>
+      </div>
     }
   </nav>
 </aside>

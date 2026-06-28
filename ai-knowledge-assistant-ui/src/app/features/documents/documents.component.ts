@@ -24,6 +24,7 @@ import {
   UploadDocumentResponse
 } from '../../core/models/document.model';
 import { DocumentService } from '../../core/services/document.service';
+import { ClientLoggerService } from '../../core/services/client-logger.service';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
@@ -71,6 +72,7 @@ export class DocumentsComponent {
   protected readonly isDragOver = signal(false);
   protected readonly isUploading = signal(false);
   protected readonly uploadProgress = signal(0);
+  protected readonly uploadStatus = signal<{ kind: 'uploading' | 'success' | 'error'; message: string } | null>(null);
   protected readonly isLoadingDocuments = signal(true);
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal(5);
@@ -95,6 +97,7 @@ export class DocumentsComponent {
   });
 
   private readonly documentService = inject(DocumentService);
+  private readonly logger = inject(ClientLoggerService);
   private readonly dialog = inject(MatDialog);
   private readonly toastr = inject(ToastrService);
   private readonly maxFileSizeBytes = 25 * 1024 * 1024;
@@ -257,6 +260,7 @@ export class DocumentsComponent {
 
     this.isUploading.set(true);
     this.uploadProgress.set(0);
+    this.uploadStatus.set({ kind: 'uploading', message: `Uploading ${file.name}...` });
 
     this.documentService.uploadDocument(file).pipe(
       finalize(() => this.isUploading.set(false))
@@ -264,7 +268,10 @@ export class DocumentsComponent {
       next: (event) => this.handleUploadEvent(event),
       error: (error: unknown) => {
         this.uploadProgress.set(0);
-        this.toastr.error(this.getUploadErrorMessage(error), 'Upload failed');
+        const uploadError = this.getUploadError(error);
+        this.logger.error('Document upload failed.', error);
+        this.uploadStatus.set({ kind: 'error', message: uploadError.message });
+        this.toastr.error(uploadError.message, uploadError.title);
       }
     });
   }
@@ -279,6 +286,10 @@ export class DocumentsComponent {
     if (event.type === HttpEventType.Response) {
       this.uploadProgress.set(100);
       this.toastr.success('Document uploaded and queued for indexing.', 'Upload complete');
+      this.uploadStatus.set({
+        kind: 'success',
+        message: 'Document uploaded successfully. Processing and indexing are now in progress; wait for the Indexed status before asking questions.'
+      });
       this.documents.update((items) => [event.body, ...items].filter((item): item is DocumentDto => item !== null));
     }
   }
@@ -316,15 +327,32 @@ export class DocumentsComponent {
     }
   }
 
-  private getUploadErrorMessage(error: unknown): string {
+  private getUploadError(error: unknown): { title: string; message: string } {
+    if (error instanceof HttpErrorResponse && error.status === 0) {
+      return {
+        title: 'Connection failed',
+        message: 'The upload API could not be reached. Check your connection and CORS configuration.'
+      };
+    }
+
+    if (error instanceof HttpErrorResponse && error.status === 401) {
+      return {
+        title: 'Authentication required',
+        message: 'Your session has expired. Sign in again before uploading.'
+      };
+    }
+
     if (error instanceof HttpErrorResponse && typeof error.error?.detail === 'string') {
-      return error.error.detail;
+      return { title: 'Upload failed', message: error.error.detail };
     }
 
     if (error instanceof HttpErrorResponse && error.error?.errors) {
-      return Object.values(error.error.errors as Record<string, string[]>).flat().join(' ');
+      return {
+        title: 'Upload failed',
+        message: Object.values(error.error.errors as Record<string, string[]>).flat().join(' ')
+      };
     }
 
-    return 'The document could not be uploaded. Please try again.';
+    return { title: 'Upload failed', message: 'The document could not be uploaded. Please try again.' };
   }
 }

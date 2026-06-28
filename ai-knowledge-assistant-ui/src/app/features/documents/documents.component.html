@@ -39,6 +39,13 @@
         </div>
       }
 
+      @if (uploadStatus(); as status) {
+        <div class="upload-status" [class]="status.kind" role="status" aria-live="polite">
+          <mat-icon>{{ status.kind === 'success' ? 'check_circle' : status.kind === 'error' ? 'error' : 'hourglass_top' }}</mat-icon>
+          <span>{{ status.message }}</span>
+        </div>
+      }
+
       <section class="filters">
         <mat-form-field appearance="outline">
           <mat-label>Search documents</mat-label>
@@ -99,7 +106,7 @@
                 }
               </div>
 
-              <button mat-icon-button [matMenuTriggerFor]="documentMenu" aria-label="Document actions">
+              <button mat-icon-button type="button" [matMenuTriggerFor]="documentMenu" aria-label="Document actions">
                 <mat-icon>more_vert</mat-icon>
               </button>
 

@@ -48,7 +48,6 @@ export class DashboardLayoutComponent {
     { icon: 'dashboard', label: 'Dashboard', route: '/dashboard' },
     { icon: 'description', label: 'Documents', route: '/documents' },
     { icon: 'chat', label: 'Chat', route: '/chat' },
-    { icon: 'forum', label: 'Conversations', route: '/conversations' },
     { icon: 'person', label: 'Profile', route: '/profile' },
     { icon: 'settings', label: 'Settings', route: '/settings' },
     { icon: 'admin_panel_settings', label: 'Admin', route: '/admin' }

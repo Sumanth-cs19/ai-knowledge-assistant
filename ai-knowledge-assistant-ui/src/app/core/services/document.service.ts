@@ -1,8 +1,9 @@
-import { HttpClient, HttpEvent } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../constants/app.constants';
+import { SKIP_GLOBAL_LOADING } from '../constants/http-context.constants';
 import {
   DocumentChunkDto,
   DocumentDto,
@@ -28,8 +29,11 @@ export class DocumentService {
     });
   }
 
-  getMyDocuments(): Observable<DocumentDto[]> {
-    return this.http.get<DocumentDto[]>(`${this.documentsUrl}/my-documents`);
+  getMyDocuments(background = false): Observable<DocumentDto[]> {
+    const context = background
+      ? new HttpContext().set(SKIP_GLOBAL_LOADING, true)
+      : undefined;
+    return this.http.get<DocumentDto[]>(`${this.documentsUrl}/my-documents`, { context });
   }
 
   getDocumentById(id: string): Observable<DocumentDto> {
