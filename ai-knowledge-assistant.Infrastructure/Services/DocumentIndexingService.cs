@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using ai_knowledge_assistant.Application.Common;
-using ai_knowledge_assistant.Application.Exceptions;
 using ai_knowledge_assistant.Application.Interfaces;
 using ai_knowledge_assistant.Domain.Entities;
 using ai_knowledge_assistant.Infrastructure.Persistence;
@@ -44,13 +43,25 @@ public sealed class DocumentIndexingService : IDocumentIndexingService
             document.OriginalFileName,
             cancellationToken);
 
+        var quality = TextQualityAnalyzer.Analyze(extractedText);
+        activity?.SetTag("document.extraction_quality_score", quality.Score);
+        _logger.LogInformation(
+            "Document extraction quality evaluated for {DocumentId}. QualityScore={QualityScore}. CharacterCount={CharacterCount}. WordCount={WordCount}. IsLowQuality={IsLowQuality}",
+            document.Id,
+            quality.Score,
+            quality.CharacterCount,
+            quality.WordCount,
+            quality.IsLowQuality);
+
+        if (quality.IsLowQuality)
+        {
+            throw new InvalidDataException(TextQualityAnalyzer.LowQualityMessage);
+        }
+
         var normalizedText = NormalizeText(extractedText);
         if (string.IsNullOrWhiteSpace(normalizedText))
         {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["document"] = ["No extractable text was found in the uploaded document."]
-            });
+            throw new InvalidDataException(TextQualityAnalyzer.LowQualityMessage);
         }
 
         var existingChunks = _context.DocumentChunks.Where(chunk => chunk.DocumentId == document.Id);
@@ -76,7 +87,11 @@ public sealed class DocumentIndexingService : IDocumentIndexingService
         _context.DocumentChunks.AddRange(chunkEntities);
         await _context.SaveChangesAsync(cancellationToken);
         activity?.SetTag("document.chunk_count", chunkEntities.Count);
-        _logger.LogInformation("Indexed document {DocumentId} with {ChunkCount} chunks", document.Id, chunkEntities.Count);
+        _logger.LogInformation(
+            "Indexed document {DocumentId} with {ChunkCount} chunks. ExtractionQualityScore={QualityScore}",
+            document.Id,
+            chunkEntities.Count,
+            quality.Score);
     }
 
     private static string NormalizeText(string text)

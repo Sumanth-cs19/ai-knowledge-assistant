@@ -30,6 +30,13 @@ public sealed class SemanticSearchAndProviderTests
     }
 
     [Fact]
+    public void Semantic_search_scores_are_clamped_to_meaningful_range()
+    {
+        Assert.Equal(1, SemanticSearchService.CalculateCombinedScore(2, 1));
+        Assert.Equal(0, SemanticSearchService.CalculateCombinedScore(-1, 0));
+    }
+
+    [Fact]
     public void Infrastructure_di_resolves_configured_ai_provider()
     {
         var configuration = new ConfigurationBuilder()

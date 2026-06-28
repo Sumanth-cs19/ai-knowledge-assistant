@@ -8,4 +8,10 @@ public interface ISemanticSearchService
         Guid userId,
         SearchQueryRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<SearchResultResponse>> GetDocumentContextAsync(
+        Guid userId,
+        IReadOnlyCollection<Guid>? documentIds,
+        int maxChunks,
+        CancellationToken cancellationToken = default);
 }

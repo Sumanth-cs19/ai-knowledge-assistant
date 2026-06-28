@@ -76,11 +76,26 @@ internal sealed class FakeSemanticSearchService : ISemanticSearchService
         _results = results;
     }
 
+    public bool DocumentContextRequested { get; private set; }
+
+    public int? RequestedContextChunkCount { get; private set; }
+
     public Task<IReadOnlyCollection<SearchResultResponse>> SearchAsync(
         Guid userId,
         SearchQueryRequest request,
         CancellationToken cancellationToken = default)
     {
+        return Task.FromResult(_results);
+    }
+
+    public Task<IReadOnlyCollection<SearchResultResponse>> GetDocumentContextAsync(
+        Guid userId,
+        IReadOnlyCollection<Guid>? documentIds,
+        int maxChunks,
+        CancellationToken cancellationToken = default)
+    {
+        DocumentContextRequested = true;
+        RequestedContextChunkCount = maxChunks;
         return Task.FromResult(_results);
     }
 }

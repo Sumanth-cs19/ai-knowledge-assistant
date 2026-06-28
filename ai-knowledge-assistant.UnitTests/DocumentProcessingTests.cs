@@ -64,6 +64,38 @@ public sealed class DocumentProcessingTests
         Assert.Equal(0, context.DocumentChunks.OrderBy(chunk => chunk.ChunkIndex).First().ChunkIndex);
     }
 
+    [Fact]
+    public async Task Indexing_rejects_low_quality_extracted_text_with_ocr_guidance()
+    {
+        await using var context = TestDbContextFactory.Create();
+        var user = new User { Email = "quality@example.com", PasswordHash = "hash", RoleId = DefaultRoles.UserRoleId };
+        var document = new Document
+        {
+            UserId = user.Id,
+            FileName = "noisy.pdf",
+            OriginalFileName = "noisy.pdf",
+            ContentType = "application/pdf",
+            FilePath = "noisy.pdf"
+        };
+        context.Users.Add(user);
+        context.Documents.Add(document);
+        await context.SaveChangesAsync();
+
+        var noisyText = string.Join(' ', Enumerable.Repeat("@@@ ### %%% | x ?", 80));
+        var quality = TextQualityAnalyzer.Analyze(noisyText);
+        var service = new DocumentIndexingService(
+            context,
+            new FakeTextExtractionService(noisyText),
+            new FakeEmbeddingProvider(),
+            NullLogger<DocumentIndexingService>.Instance);
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => service.IndexAsync(document));
+
+        Assert.True(quality.IsLowQuality);
+        Assert.Equal(TextQualityAnalyzer.LowQualityMessage, exception.Message);
+        Assert.Empty(context.DocumentChunks.Where(chunk => chunk.DocumentId == document.Id));
+    }
+
     private sealed class NoOpDocumentProcessingQueue : IDocumentProcessingQueue
     {
         public ValueTask QueueAsync(Guid documentId, CancellationToken cancellationToken = default)

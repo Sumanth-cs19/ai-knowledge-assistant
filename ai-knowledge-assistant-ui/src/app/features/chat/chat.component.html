@@ -16,13 +16,6 @@
     </mat-sidenav>
 
     <mat-sidenav-content class="chat-content">
-      <input
-        #chatDocumentInput
-        type="file"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        hidden
-        (change)="onChatFileSelected($event)" />
-
       <header class="chat-header">
         <button mat-icon-button type="button" (click)="toggleSidebar()" aria-label="Toggle conversations">
           <mat-icon>menu</mat-icon>
@@ -41,16 +34,50 @@
             }
           </p>
         </div>
-        <button
-          mat-stroked-button
-          type="button"
-          class="upload-shortcut"
-          [disabled]="isUploadingDocument()"
-          (click)="chatDocumentInput.click()">
-          <mat-icon>upload_file</mat-icon>
-          <span class="upload-shortcut-label">{{ isUploadingDocument() ? 'Uploading...' : 'Add document' }}</span>
-        </button>
       </header>
+
+      @if (documentAvailability() === 'loading' || documents().length > 0) {
+        <section class="knowledge-panel" aria-labelledby="knowledge-base-title">
+          <header>
+            <div>
+              <h3 id="knowledge-base-title">Knowledge Base</h3>
+              <p>{{ documents().length }} uploaded {{ documents().length === 1 ? 'document' : 'documents' }}</p>
+            </div>
+            @if (documents().length > 5) {
+              <button mat-button type="button" (click)="openDocuments()">View all documents</button>
+            }
+          </header>
+
+          @if (documentAvailability() === 'loading') {
+            <mat-progress-bar mode="indeterminate" aria-label="Loading uploaded documents" />
+          } @else {
+            <div class="knowledge-list">
+              @for (document of knowledgeDocuments(); track document.id) {
+                <article class="knowledge-document" [class.indexed]="getDocumentStatusLabel(document.status) === 'Indexed'">
+                  <mat-icon>{{ document.originalFileName.toLowerCase().endsWith('.pdf') ? 'picture_as_pdf' : 'article' }}</mat-icon>
+                  <div class="knowledge-document-copy">
+                    <strong>{{ document.originalFileName }}</strong>
+                    <span>{{ document.uploadedAt | date: 'mediumDate' }} &middot; Version {{ document.versionNumber }}</span>
+                    @if (document.errorMessage) {
+                      <small class="knowledge-warning">{{ document.errorMessage }}</small>
+                    }
+                  </div>
+                  <span class="knowledge-status" [class]="getDocumentStatusClass(document.status)">
+                    {{ getDocumentStatusLabel(document.status) }}
+                  </span>
+                </article>
+              }
+            </div>
+          }
+
+          @if (canAskQuestions()) {
+            <p class="knowledge-helper">
+              <mat-icon>verified</mat-icon>
+              Answers are generated only from indexed documents.
+            </p>
+          }
+        </section>
+      }
 
       @if (isGenerating()) {
         <mat-progress-bar mode="indeterminate" />
@@ -74,28 +101,23 @@
         } @else if (documentAvailability() === 'processing') {
           <div class="document-gate" role="status" aria-live="polite">
             <mat-icon class="gate-icon processing">sync</mat-icon>
-            <h3>Your document is being processed</h3>
-            <p>The chat input will unlock automatically when at least one document is indexed.</p>
+            <h3>Your documents are still being processed.</h3>
+            <p>The chat input will unlock automatically when at least one document is Indexed.</p>
             <mat-progress-bar mode="indeterminate" />
             <div class="gate-actions">
-              <button mat-stroked-button type="button" [disabled]="isUploadingDocument()" (click)="chatDocumentInput.click()">
-                <mat-icon>upload_file</mat-icon>
-                Upload another PDF or DOCX
-              </button>
               <button mat-button type="button" (click)="openDocuments()">Manage documents</button>
             </div>
           </div>
         } @else if (documentAvailability() === 'none') {
           <div class="document-gate">
             <mat-icon class="gate-icon">description</mat-icon>
-            <h3>Upload a document to start asking questions</h3>
-            <p>Add a PDF or DOCX file. Chat becomes available after its content has been indexed.</p>
+            <h3>Upload a document to start chatting.</h3>
+            <p>Add and manage PDF or DOCX files from the Documents page. Chat becomes available after indexing.</p>
             <div class="gate-actions">
-              <button mat-flat-button color="primary" type="button" [disabled]="isUploadingDocument()" (click)="chatDocumentInput.click()">
-                <mat-icon>upload_file</mat-icon>
-                {{ isUploadingDocument() ? 'Uploading...' : 'Upload PDF or DOCX' }}
+              <button mat-flat-button color="primary" type="button" (click)="openDocuments()">
+                <mat-icon>description</mat-icon>
+                Go to Documents
               </button>
-              <button mat-button type="button" (click)="openDocuments()">Manage documents</button>
             </div>
           </div>
         } @else if (documentAvailability() === 'error') {

@@ -11,6 +11,58 @@ namespace ai_knowledge_assistant.UnitTests;
 
 public sealed class ChatAndFeedbackTests
 {
+    [Theory]
+    [InlineData("summarize the pdf")]
+    [InlineData("Summarize this document")]
+    [InlineData("give summary")]
+    [InlineData("what is this document about")]
+    public void Summarization_queries_are_detected(string question)
+    {
+        Assert.True(ChatService.IsSummarizationQuestion(question));
+    }
+
+    [Fact]
+    public async Task Summarization_uses_broad_ordered_document_context()
+    {
+        var search = new FakeSemanticSearchService([
+            new SearchResultResponse(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                0,
+                "Document introduction and main topic.",
+                1,
+                "stored.pdf",
+                "summary.pdf",
+                DateTime.UtcNow,
+                "document-coverage")
+        ]);
+        var service = new ChatService(
+            search,
+            new FakeAIProvider(),
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+
+        await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("summarize the pdf"));
+
+        Assert.True(search.DocumentContextRequested);
+        Assert.Equal(12, search.RequestedContextChunkCount);
+    }
+
+    [Fact]
+    public async Task Chat_returns_grounded_fallback_when_no_context_is_relevant()
+    {
+        var service = new ChatService(
+            new FakeSemanticSearchService([]),
+            new FakeAIProvider(),
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+
+        var response = await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("unrelated question"));
+
+        Assert.Equal("I could not find this clearly in your uploaded documents.", response.Answer);
+        Assert.Empty(response.Citations);
+    }
+
     [Fact]
     public async Task Chat_response_maps_citations_from_search_results()
     {

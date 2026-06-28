@@ -8,4 +8,5 @@ public sealed record SearchResultResponse(
     double Similarity,
     string FileName,
     string OriginalFileName,
-    DateTime UploadedAt);
+    DateTime UploadedAt,
+    string ScoreType = "hybrid");

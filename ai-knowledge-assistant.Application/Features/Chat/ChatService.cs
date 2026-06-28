@@ -16,6 +16,8 @@ public sealed class ChatService : IChatService
 {
     private static readonly ActivitySource ActivitySource = new(Observability.ActivitySourceName);
     private const int ContextChunkCount = 5;
+    private const int SummaryContextChunkCount = 12;
+    private const string NoContextAnswer = "I could not find this clearly in your uploaded documents.";
     private readonly IAIProvider _aiProvider;
     private readonly IConversationRepository _conversationRepository;
     private readonly ILogger<ChatService> _logger;
@@ -43,31 +45,129 @@ public sealed class ChatService : IChatService
         using var activity = ActivitySource.StartActivity("chat.ask");
         activity?.SetTag("user.id", userId);
         _logger.LogInformation("Processing chat request for user {UserId}", userId);
-        var matches = await _semanticSearchService.SearchAsync(
-            userId,
-            new SearchQueryRequest(request.Question, ContextChunkCount),
-            cancellationToken);
-
-        if (matches.Count == 0)
-        {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["context"] = ["No relevant document chunks were found for this question."]
-            });
-        }
-
-        var prompt = BuildPrompt(request.Question, matches);
+        var (matches, summarizationMode) = await RetrieveContextAsync(userId, request, cancellationToken);
+        activity?.SetTag("chat.summarization_mode", summarizationMode);
         activity?.SetTag("chat.citation_count", matches.Count);
-        var answer = await _aiProvider.GenerateAnswerAsync(
-            prompt,
-            matches.Select(match => match.Content).ToList(),
-            cancellationToken);
+        var answer = NoContextAnswer;
+
+        if (matches.Count > 0)
+        {
+            var prompt = BuildPrompt(request.Question, matches, summarizationMode);
+            answer = await _aiProvider.GenerateAnswerAsync(
+                prompt,
+                matches.Select(match => match.Content).ToList(),
+                cancellationToken);
+        }
 
         if (string.IsNullOrWhiteSpace(answer))
         {
             throw new InvalidOperationException("The language model did not return an answer.");
         }
 
+        return await SaveResponseAsync(userId, request, answer, matches, cancellationToken);
+    }
+
+    public async IAsyncEnumerable<ChatStreamEvent> AskStreamAsync(
+        Guid userId,
+        ChatAskRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ValidateRequest(userId, request);
+
+        using var activity = ActivitySource.StartActivity("chat.ask_stream");
+        activity?.SetTag("user.id", userId);
+        _logger.LogInformation("Processing streaming chat request for user {UserId}", userId);
+        var (matches, summarizationMode) = await RetrieveContextAsync(userId, request, cancellationToken);
+        activity?.SetTag("chat.summarization_mode", summarizationMode);
+        activity?.SetTag("chat.citation_count", matches.Count);
+        var answerBuilder = new StringBuilder();
+
+        if (matches.Count == 0)
+        {
+            answerBuilder.Append(NoContextAnswer);
+            yield return new ChatStreamEvent("token", NoContextAnswer);
+        }
+        else
+        {
+            var prompt = BuildPrompt(request.Question, matches, summarizationMode);
+            await foreach (var token in _aiProvider.StreamAnswerAsync(
+                               prompt,
+                               matches.Select(match => match.Content).ToList(),
+                               cancellationToken))
+            {
+                answerBuilder.Append(token);
+                yield return new ChatStreamEvent("token", token);
+            }
+        }
+
+        var answer = answerBuilder.ToString();
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            throw new InvalidOperationException("The language model did not return an answer.");
+        }
+
+        var response = await SaveResponseAsync(userId, request, answer, matches, cancellationToken);
+
+        yield return new ChatStreamEvent(
+            "complete",
+            Response: response);
+    }
+
+    public static bool IsSummarizationQuestion(string question)
+    {
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            return false;
+        }
+
+        var normalized = string.Join(' ', question.Trim().ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+        return normalized.Contains("summarize", StringComparison.Ordinal)
+            || normalized.Contains("summary", StringComparison.Ordinal)
+            || normalized.Contains("what is this document about", StringComparison.Ordinal)
+            || normalized.Contains("what is the document about", StringComparison.Ordinal)
+            || normalized.Contains("what is this pdf about", StringComparison.Ordinal)
+            || normalized.Contains("give me an overview", StringComparison.Ordinal)
+            || normalized.Equals("give overview", StringComparison.Ordinal);
+    }
+
+    private async Task<(IReadOnlyCollection<SearchResultResponse> Matches, bool SummarizationMode)> RetrieveContextAsync(
+        Guid userId,
+        ChatAskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var summarizationMode = IsSummarizationQuestion(request.Question);
+        var documentIds = GetRequestedDocumentIds(request);
+        var matches = summarizationMode
+            ? await _semanticSearchService.GetDocumentContextAsync(
+                userId,
+                documentIds,
+                SummaryContextChunkCount,
+                cancellationToken)
+            : await _semanticSearchService.SearchAsync(
+                userId,
+                new SearchQueryRequest(request.Question, ContextChunkCount, documentIds),
+                cancellationToken);
+
+        _logger.LogInformation(
+            "Chat context selected for user {UserId}. SummarizationMode={SummarizationMode}. RequestedDocumentIds={RequestedDocumentIds}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}",
+            userId,
+            summarizationMode,
+            documentIds ?? [],
+            matches.Select(match => match.ChunkId).ToArray(),
+            matches.Select(match => Math.Round(match.Similarity, 4)).ToArray());
+
+        return (matches, summarizationMode);
+    }
+
+    private async Task<ChatResponse> SaveResponseAsync(
+        Guid userId,
+        ChatAskRequest request,
+        string answer,
+        IReadOnlyCollection<SearchResultResponse> matches,
+        CancellationToken cancellationToken)
+    {
         var conversation = await GetOrCreateConversationAsync(userId, request, cancellationToken);
         var now = DateTime.UtcNow;
         var userMessage = new ChatMessage
@@ -106,93 +206,30 @@ public sealed class ChatService : IChatService
             sources);
     }
 
-    public async IAsyncEnumerable<ChatStreamEvent> AskStreamAsync(
-        Guid userId,
-        ChatAskRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private static IReadOnlyCollection<Guid>? GetRequestedDocumentIds(ChatAskRequest request)
     {
-        ValidateRequest(userId, request);
+        var documentIds = (request.SelectedDocumentIds ?? [])
+            .Append(request.DocumentId ?? Guid.Empty)
+            .Where(documentId => documentId != Guid.Empty)
+            .Distinct()
+            .ToArray();
 
-        using var activity = ActivitySource.StartActivity("chat.ask_stream");
-        activity?.SetTag("user.id", userId);
-        _logger.LogInformation("Processing streaming chat request for user {UserId}", userId);
-        var matches = await _semanticSearchService.SearchAsync(
-            userId,
-            new SearchQueryRequest(request.Question, ContextChunkCount),
-            cancellationToken);
-
-        if (matches.Count == 0)
-        {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["context"] = ["No relevant document chunks were found for this question."]
-            });
-        }
-
-        var prompt = BuildPrompt(request.Question, matches);
-        activity?.SetTag("chat.citation_count", matches.Count);
-        var answerBuilder = new StringBuilder();
-
-        await foreach (var token in _aiProvider.StreamAnswerAsync(
-                           prompt,
-                           matches.Select(match => match.Content).ToList(),
-                           cancellationToken))
-        {
-            answerBuilder.Append(token);
-            yield return new ChatStreamEvent("token", token);
-        }
-
-        var answer = answerBuilder.ToString();
-        if (string.IsNullOrWhiteSpace(answer))
-        {
-            throw new InvalidOperationException("The language model did not return an answer.");
-        }
-
-        var conversation = await GetOrCreateConversationAsync(userId, request, cancellationToken);
-        var userMessage = new ChatMessage
-        {
-            ConversationId = conversation.Id,
-            Role = ChatMessageRole.User,
-            Content = request.Question.Trim(),
-            TokenCount = EstimateTokenCount(request.Question),
-            CreatedAt = DateTime.UtcNow
-        };
-        var assistantMessage = new ChatMessage
-        {
-            ConversationId = conversation.Id,
-            Role = ChatMessageRole.Assistant,
-            Content = answer,
-            TokenCount = EstimateTokenCount(answer),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        conversation.UpdatedAt = assistantMessage.CreatedAt;
-        await _conversationRepository.AddMessagesAsync(conversation, [userMessage, assistantMessage], cancellationToken);
-        var sources = matches.Select(ToSource).ToList();
-        _logger.LogInformation(
-            "Completed streaming chat request for conversation {ConversationId} and user {UserId} with {SourceCount} sources",
-            conversation.Id,
-            userId,
-            matches.Count);
-
-        yield return new ChatStreamEvent(
-            "complete",
-            Response: new ChatResponse(
-                conversation.Id,
-                userMessage.Id,
-                assistantMessage.Id,
-                userMessage.Content,
-                assistantMessage.Content,
-                assistantMessage.CreatedAt,
-                sources));
+        return documentIds.Length == 0 ? null : documentIds;
     }
 
-    private static string BuildPrompt(string question, IReadOnlyCollection<SearchResultResponse> matches)
+    private static string BuildPrompt(
+        string question,
+        IReadOnlyCollection<SearchResultResponse> matches,
+        bool summarizationMode)
     {
         var prompt = new StringBuilder();
         prompt.AppendLine("You are an AI knowledge assistant. Answer the question using only the provided document context.");
-        prompt.AppendLine("If the context does not contain the answer, say: \"I could not find this in the uploaded documents.\"");
+        prompt.AppendLine($"If the context does not contain the answer, say: \"{NoContextAnswer}\"");
         prompt.AppendLine("Cite sources inline using [source: original-file-name#chunk-index].");
+        if (summarizationMode)
+        {
+            prompt.AppendLine("Summarization mode is active. Produce a coherent overview from the ordered document chunks, covering the main topic, key ideas, and conclusions without inventing missing details.");
+        }
         prompt.AppendLine();
         prompt.AppendLine("Question:");
         prompt.AppendLine(question.Trim());
@@ -238,7 +275,8 @@ public sealed class ChatService : IChatService
             match.OriginalFileName,
             match.OriginalFileName,
             match.Similarity,
-            CreateSnippet(match.Content));
+            CreateSnippet(match.Content),
+            match.ScoreType);
     }
 
     private static string CreateSnippet(string content)

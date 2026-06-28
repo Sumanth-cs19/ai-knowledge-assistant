@@ -63,4 +63,13 @@ internal sealed class FakeSemanticSearchService : ISemanticSearchService
 
         return Task.FromResult(response);
     }
+
+    public Task<IReadOnlyCollection<SearchResultResponse>> GetDocumentContextAsync(
+        Guid userId,
+        IReadOnlyCollection<Guid>? documentIds,
+        int maxChunks,
+        CancellationToken cancellationToken = default)
+    {
+        return SearchAsync(userId, new SearchQueryRequest("summary", maxChunks, documentIds), cancellationToken);
+    }
 }

@@ -18,6 +18,16 @@ interface ChatStreamCallbacks {
   onToken: (token: string) => void;
   onComplete: (event: ChatStreamEvent) => void;
   onError: (error: ChatStreamError) => void;
+  onDone?: () => void;
+}
+
+interface RawChatStreamEvent {
+  type?: ChatStreamEvent['type'];
+  Type?: ChatStreamEvent['type'];
+  token?: string | null;
+  Token?: string | null;
+  response?: ChatStreamEvent['response'];
+  Response?: ChatStreamEvent['response'];
 }
 
 @Injectable({
@@ -81,6 +91,7 @@ export class ChatService {
     const decoder = new TextDecoder();
     let buffer = '';
     let completed = false;
+    let doneReceived = false;
 
     try {
       while (true) {
@@ -94,7 +105,9 @@ export class ChatService {
         buffer = frames.pop() ?? '';
 
         for (const frame of frames) {
-          completed = this.handleSseFrame(frame, callbacks) || completed;
+          const outcome = this.handleSseFrame(frame, callbacks);
+          completed = outcome === 'complete' || completed;
+          doneReceived = outcome === 'done' || doneReceived;
         }
       }
     } catch (error: unknown) {
@@ -107,7 +120,7 @@ export class ChatService {
       return;
     }
 
-    if (!completed && !abortSignal.aborted) {
+    if (!completed && !doneReceived && !abortSignal.aborted) {
       callbacks.onError({
         kind: 'no-answer',
         message: 'The AI service finished without returning an answer. Please try again.'
@@ -133,29 +146,33 @@ export class ChatService {
   private handleSseFrame(
     frame: string,
     callbacks: ChatStreamCallbacks
-  ): boolean {
+  ): 'complete' | 'done' | null {
     if (frame.startsWith('event: done')) {
-      return false;
+      callbacks.onDone?.();
+      return 'done';
     }
 
     const dataLine = frame.split('\n').find((line) => line.startsWith('data:'));
     const data = dataLine?.replace(/^data:\s*/, '');
     if (!data) {
-      return false;
+      return null;
     }
 
-    const event = JSON.parse(data) as ChatStreamEvent;
-    if (event.type === 'token' && event.token) {
-      callbacks.onToken(event.token);
-      return false;
+    const rawEvent = JSON.parse(data) as RawChatStreamEvent;
+    const type = rawEvent.type ?? rawEvent.Type;
+    const token = rawEvent.token ?? rawEvent.Token;
+    const response = rawEvent.response ?? rawEvent.Response;
+    if (type === 'token' && token) {
+      callbacks.onToken(token);
+      return null;
     }
 
-    if (event.type === 'complete') {
-      callbacks.onComplete(event);
-      return true;
+    if (type === 'complete') {
+      callbacks.onComplete({ type, response });
+      return 'complete';
     }
 
-    return false;
+    return null;
   }
 
   private async getErrorMessage(response: Response): Promise<ChatStreamError> {

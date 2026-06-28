@@ -9,6 +9,8 @@ namespace ai_knowledge_assistant.Api.Endpoints;
 
 public static class ChatEndpoints
 {
+    private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
+
     public static IEndpointRouteBuilder MapChatEndpoints(
         this IEndpointRouteBuilder endpoints,
         string prefix = "/api/chat",
@@ -49,7 +51,7 @@ public static class ChatEndpoints
 
                 await foreach (var streamEvent in chatService.AskStreamAsync(userId, request, cancellationToken))
                 {
-                    var payload = JsonSerializer.Serialize(streamEvent);
+                    var payload = JsonSerializer.Serialize(streamEvent, StreamJsonOptions);
                     await context.Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
                 }

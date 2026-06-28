@@ -7,4 +7,5 @@ public sealed record ChatSourceResponse(
     string DocumentName,
     string OriginalFileName,
     double Similarity,
-    string Snippet);
+    string Snippet,
+    string ScoreType = "hybrid");

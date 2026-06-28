@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
+import { DatePipe } from '@angular/common';
 import { Component, ElementRef, OnDestroy, ViewChild, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,6 +32,7 @@ import { TypingIndicatorComponent } from './components/typing-indicator/typing-i
 @Component({
   selector: 'app-chat',
   imports: [
+    DatePipe,
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
@@ -53,14 +54,15 @@ export class ChatComponent implements OnDestroy {
   protected readonly messages = signal<ChatUiMessage[]>([]);
   protected readonly isGenerating = signal(false);
   protected readonly isCreatingConversation = signal(false);
-  protected readonly isUploadingDocument = signal(false);
-  protected readonly documentAvailability = signal<'loading' | 'none' | 'processing' | 'ready' | 'error'>('loading');
+  protected readonly documents = signal<DocumentDto[]>([]);
+  protected readonly documentAvailability = signal<DocumentAvailability>('loading');
   protected readonly generationStage = signal<'idle' | 'searching' | 'thinking' | 'generating'>('idle');
   protected readonly chatStatus = signal<{ kind: 'asking' | 'success' | 'error'; message: string } | null>(null);
   protected readonly sidebarOpened = signal(true);
   protected readonly showScrollToBottom = signal(false);
   protected readonly hasMessages = computed(() => this.messages().length > 0);
   protected readonly canAskQuestions = computed(() => this.documentAvailability() === 'ready');
+  protected readonly knowledgeDocuments = computed(() => this.documents().slice(0, 5));
   protected readonly activeConversationTitle = computed(() => {
     return this.conversations().find((conversation) => conversation.id === this.activeConversationId())?.title
       ?? 'New chat';
@@ -76,7 +78,6 @@ export class ChatComponent implements OnDestroy {
   private lastQuestion: string | null = null;
   private pendingTitleQuestion: string | null = null;
   private documentStatusPollId: number | null = null;
-  private readonly maxFileSizeBytes = 25 * 1024 * 1024;
 
   constructor() {
     this.loadConversations();
@@ -184,7 +185,8 @@ export class ChatComponent implements OnDestroy {
       {
         onToken: (token) => this.appendToken(assistantMessage.id, token),
         onComplete: (event) => this.completeAssistantMessage(assistantMessage.id, event.response ?? null),
-        onError: (error) => this.failAssistantMessage(assistantMessage.id, error)
+        onError: (error) => this.failAssistantMessage(assistantMessage.id, error),
+        onDone: () => this.finishStream(assistantMessage.id)
       },
       this.abortController.signal
     ).catch((error: unknown) => {
@@ -286,48 +288,16 @@ export class ChatComponent implements OnDestroy {
     void this.router.navigate(['/documents']);
   }
 
-  protected onChatFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.item(0);
-    input.value = '';
-
-    if (!file) {
-      return;
-    }
-
-    const validationError = this.validateUpload(file);
-    if (validationError) {
-      this.toastr.error(validationError, 'Upload blocked');
-      return;
-    }
-
-    this.isUploadingDocument.set(true);
-    this.documentService.uploadDocument(file).pipe(
-      finalize(() => this.isUploadingDocument.set(false))
-    ).subscribe({
-      next: (uploadEvent) => {
-        if (uploadEvent.type !== HttpEventType.Response) {
-          return;
-        }
-
-        this.documentAvailability.set('processing');
-        this.toastr.success('Document uploaded. Indexing has started.', 'Upload complete');
-        this.scheduleDocumentStatusPoll(1500);
-      },
-      error: (error: unknown) => {
-        const message = error instanceof HttpErrorResponse && error.status === 401
-          ? 'Your session has expired. Sign in again before uploading.'
-          : error instanceof HttpErrorResponse && error.status === 0
-            ? 'The upload service could not be reached. Check your connection and try again.'
-            : 'The document could not be uploaded. Please try again.';
-        this.toastr.error(message, 'Upload failed');
-        this.loadDocumentAvailability(false);
-      }
-    });
-  }
-
   protected retryDocumentCheck(): void {
     this.loadDocumentAvailability();
+  }
+
+  protected getDocumentStatusLabel(status: DocumentDto['status']): string {
+    return DocumentStatus[this.normalizeDocumentStatus(status)];
+  }
+
+  protected getDocumentStatusClass(status: DocumentDto['status']): string {
+    return this.getDocumentStatusLabel(status).toLowerCase();
   }
 
   protected toggleSidebar(): void {
@@ -403,6 +373,29 @@ export class ChatComponent implements OnDestroy {
     }));
     this.loadConversations();
     this.scrollToBottom();
+  }
+
+  private finishStream(messageId: string): void {
+    if (!this.isGenerating()) {
+      return;
+    }
+
+    const streamedAnswer = this.messages().find((message) => message.id === messageId)?.content.trim();
+    if (!streamedAnswer) {
+      this.failAssistantMessage(messageId, {
+        kind: 'no-answer',
+        message: 'The AI service returned no answer. Please try again.'
+      });
+      return;
+    }
+
+    this.isGenerating.set(false);
+    this.generationStage.set('idle');
+    this.chatStatus.set({ kind: 'success', message: 'Answer received.' });
+    this.abortController = null;
+    this.messages.update((messages) => messages.map((message) => message.id === messageId
+      ? { ...message, isStreaming: false }
+      : message));
   }
 
   private failAssistantMessage(messageId: string, error: ChatStreamError): void {
@@ -503,18 +496,11 @@ export class ChatComponent implements OnDestroy {
 
     this.documentService.getMyDocuments(!showLoading).subscribe({
       next: (documents) => {
-        if (documents.some((document) => this.normalizeDocumentStatus(document.status) === DocumentStatus.Indexed)) {
-          this.documentAvailability.set('ready');
-          return;
-        }
+        this.documents.set(documents);
+        const availability = resolveDocumentAvailability(documents);
+        this.documentAvailability.set(availability);
 
-        const isProcessing = documents.some((document) => {
-          const status = this.normalizeDocumentStatus(document.status);
-          return status === DocumentStatus.Pending || status === DocumentStatus.Processing;
-        });
-        this.documentAvailability.set(isProcessing ? 'processing' : 'none');
-
-        if (isProcessing) {
+        if (availability === 'processing') {
           this.scheduleDocumentStatusPoll();
         }
       },
@@ -540,23 +526,6 @@ export class ChatComponent implements OnDestroy {
       : DocumentStatus[status] ?? DocumentStatus.Pending;
   }
 
-  private validateUpload(file: File): string | null {
-    const lowerName = file.name.toLowerCase();
-    if (!lowerName.endsWith('.pdf') && !lowerName.endsWith('.docx')) {
-      return 'Only PDF and DOCX files are supported.';
-    }
-
-    if (file.size <= 0) {
-      return 'The selected file is empty.';
-    }
-
-    if (file.size > this.maxFileSizeBytes) {
-      return 'Files must be 25 MB or smaller.';
-    }
-
-    return null;
-  }
-
   private focusChatInput(): void {
     window.setTimeout(() => this.chatInput?.focus());
   }
@@ -570,4 +539,23 @@ export class ChatComponent implements OnDestroy {
       }
     });
   }
+}
+
+export type DocumentAvailability = 'loading' | 'none' | 'processing' | 'ready' | 'error';
+
+export function resolveDocumentAvailability(documents: DocumentDto[]): Exclude<DocumentAvailability, 'loading' | 'error'> {
+  const normalizeStatus = (status: DocumentDto['status']): DocumentStatus => {
+    return typeof status === 'number' ? status : DocumentStatus[status] ?? DocumentStatus.Pending;
+  };
+
+  if (documents.some((document) => normalizeStatus(document.status) === DocumentStatus.Indexed)) {
+    return 'ready';
+  }
+
+  return documents.some((document) => {
+    const status = normalizeStatus(document.status);
+    return status === DocumentStatus.Pending || status === DocumentStatus.Processing;
+  })
+    ? 'processing'
+    : 'none';
 }

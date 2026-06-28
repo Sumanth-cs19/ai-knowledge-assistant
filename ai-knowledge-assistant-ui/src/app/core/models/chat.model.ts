@@ -9,6 +9,8 @@ export enum ChatMessageRole {
 export interface ChatAskRequest {
   question: string;
   conversationId?: string | null;
+  documentId?: string | null;
+  selectedDocumentIds?: string[] | null;
 }
 
 export interface ChatCitationDto {
@@ -19,6 +21,7 @@ export interface ChatCitationDto {
   originalFileName: string;
   similarity: number;
   snippet: string;
+  scoreType?: 'hybrid' | 'local-fallback' | 'document-coverage' | string;
 }
 
 export interface ChatResponse {
