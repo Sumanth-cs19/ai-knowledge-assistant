@@ -20,6 +20,7 @@ import { DocumentDto, DocumentStatus } from '../../core/models/document.model';
 import { ChatService, ChatStreamError } from '../../core/services/chat.service';
 import { ConversationService } from '../../core/services/conversation.service';
 import { DocumentService } from '../../core/services/document.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData
@@ -74,10 +75,12 @@ export class ChatComponent implements OnDestroy {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly toastr = inject(ToastrService);
+  private readonly preferencesService = inject(PreferencesService);
   private abortController: AbortController | null = null;
   private lastQuestion: string | null = null;
   private pendingTitleQuestion: string | null = null;
   private documentStatusPollId: number | null = null;
+  private initialConversationPreferenceApplied = false;
 
   constructor() {
     this.loadConversations();
@@ -177,11 +180,25 @@ export class ChatComponent implements OnDestroy {
       }
     }, 900);
 
+    const request = { question, conversationId: this.activeConversationId() };
+    if (!this.preferencesService.preferences().streamingEnabled) {
+      this.abortController = null;
+      this.chatService.ask(request).subscribe({
+        next: (response) => this.completeAssistantMessage(assistantMessage.id, response),
+        error: (error: { status?: number; error?: { detail?: string; title?: string } }) => {
+          const kind = error.status === 401 ? 'unauthorized' : error.status === 0 ? 'network' : 'api';
+          this.failAssistantMessage(assistantMessage.id, {
+            kind,
+            status: error.status,
+            message: error.error?.detail ?? error.error?.title ?? 'The chat request failed. Please try again.'
+          });
+        }
+      });
+      return;
+    }
+
     void this.chatService.streamAsk(
-      {
-        question,
-        conversationId: this.activeConversationId()
-      },
+      request,
       {
         onToken: (token) => this.appendToken(assistantMessage.id, token),
         onComplete: (event) => this.completeAssistantMessage(assistantMessage.id, event.response ?? null),
@@ -319,7 +336,16 @@ export class ChatComponent implements OnDestroy {
 
   private loadConversations(): void {
     this.conversationService.getConversations().subscribe({
-      next: (response) => this.conversations.set(response.items.filter((conversation) => !conversation.isArchived))
+      next: (response) => {
+        const conversations = response.items.filter((conversation) => !conversation.isArchived);
+        this.conversations.set(conversations);
+        if (!this.initialConversationPreferenceApplied) {
+          this.initialConversationPreferenceApplied = true;
+          if (this.preferencesService.preferences().defaultChatBehavior === 'continue-last' && conversations[0]) {
+            this.openConversation(conversations[0].id);
+          }
+        }
+      }
     });
   }
 

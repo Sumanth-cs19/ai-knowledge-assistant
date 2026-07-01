@@ -1,8 +1,14 @@
 <mat-sidenav-container class="dashboard-shell">
-  <mat-sidenav class="sidebar" [class.compact]="isCompactSidebar()" mode="side" opened>
+  <mat-sidenav
+    class="sidebar"
+    [class.compact]="isCompactSidebar() && !isMobile()"
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="!isMobile() || mobileSidebarOpened()"
+    [fixedInViewport]="isMobile()"
+    (closedStart)="mobileSidebarOpened.set(false)">
     <div class="sidebar-brand">
       <span class="brand-mark">AI</span>
-      @if (!isCompactSidebar()) {
+      @if (!isCompactSidebar() || isMobile()) {
         <span>Knowledge Assistant</span>
       }
     </div>
@@ -12,10 +18,13 @@
         <a
           mat-list-item
           [routerLink]="item.route"
+          [matTooltip]="isCompactSidebar() && !isMobile() ? item.label : ''"
+          matTooltipPosition="right"
+          (click)="closeMobileSidebar()"
           routerLinkActive="active-link"
           [routerLinkActiveOptions]="{ exact: true }">
           <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-          @if (!isCompactSidebar()) {
+          @if (!isCompactSidebar() || isMobile()) {
             <span matListItemTitle>{{ item.label }}</span>
           }
         </a>
@@ -25,13 +34,14 @@
 
   <mat-sidenav-content>
     <mat-toolbar class="topbar">
+      @if (isMobile()) {
+        <button mat-icon-button type="button" aria-label="Open navigation" (click)="toggleMobileSidebar()">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
       <span class="topbar-title">AI Knowledge Assistant</span>
       <span class="topbar-spacer"></span>
-      <button mat-icon-button aria-label="Notifications">
-        <mat-icon>notifications</mat-icon>
-      </button>
-
-      <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Account">
+      <button mat-icon-button type="button" [matMenuTriggerFor]="profileMenu" aria-label="Account menu">
         <mat-icon>account_circle</mat-icon>
       </button>
 
@@ -40,10 +50,6 @@
           <strong>{{ currentUser()?.email }}</strong>
           <span>{{ currentUser()?.role }}</span>
         </div>
-        <a mat-menu-item routerLink="/profile">
-          <mat-icon>person</mat-icon>
-          <span>Profile</span>
-        </a>
         <a mat-menu-item routerLink="/settings">
           <mat-icon>settings</mat-icon>
           <span>Settings</span>

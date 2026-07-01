@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { LoadingService } from './core/services/loading.service';
-import { PreferencesService } from './core/services/preferences.service';
 import { LoadingSpinnerComponent } from './shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -13,9 +12,6 @@ import { LoadingSpinnerComponent } from './shared/components/loading-spinner/loa
 })
 export class App {
   constructor(
-    protected readonly loadingService: LoadingService,
-    preferencesService: PreferencesService
-  ) {
-    preferencesService.initializeTheme();
-  }
+    protected readonly loadingService: LoadingService
+  ) {}
 }

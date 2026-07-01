@@ -1,8 +1,9 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 import { APP_CONFIG } from '../constants/app.constants';
-import { ChatAskRequest, ChatStreamEvent } from '../models/chat.model';
+import { ChatAskRequest, ChatResponse, ChatStreamEvent } from '../models/chat.model';
 import { AuthService } from './auth.service';
 import { ClientLoggerService } from './client-logger.service';
 
@@ -35,7 +36,9 @@ interface RawChatStreamEvent {
 })
 export class ChatService {
   private readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly logger = inject(ClientLoggerService);
+  private readonly askUrl = `${APP_CONFIG.apiBaseUrl}/chat/ask`;
   private readonly streamUrl = `${APP_CONFIG.apiBaseUrl}/chat/ask/stream`;
 
   async streamAsk(
@@ -44,6 +47,10 @@ export class ChatService {
     abortSignal: AbortSignal
   ): Promise<void> {
     return this.executeStream(request, callbacks, abortSignal, false);
+  }
+
+  ask(request: ChatAskRequest): Observable<ChatResponse> {
+    return this.http.post<ChatResponse>(this.askUrl, request);
   }
 
   private async executeStream(

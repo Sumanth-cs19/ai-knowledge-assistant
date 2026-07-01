@@ -1,27 +1,83 @@
-<section class="page">
-  <mat-card appearance="outlined">
-    <mat-card-header>
-      <mat-icon mat-card-avatar>dashboard</mat-icon>
-      <mat-card-title>Dashboard</mat-card-title>
-      <mat-card-subtitle>Overview of documents, conversations, and retrieval activity.</mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="user-summary">
-        <div>
-          <span>Signed in as</span>
-          <strong>{{ currentUser()?.email }}</strong>
-        </div>
-        <div>
-          <span>Role</span>
-          <strong>{{ currentUser()?.role }}</strong>
-        </div>
-      </div>
+<section class="dashboard-page">
+  <header class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Your document knowledge base and recent workspace activity.</p>
+    </div>
+    <button mat-icon-button type="button" aria-label="Refresh dashboard" (click)="refresh()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </header>
 
-      <div class="placeholder-grid">
-        <div>Documents indexed</div>
-        <div>Recent conversations</div>
-        <div>Search quality</div>
-      </div>
-    </mat-card-content>
-  </mat-card>
+  @if (isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading dashboard" />
+  }
+
+  <section class="metric-grid" aria-label="Workspace overview">
+    @for (metric of metricCards(); track metric.label) {
+      <mat-card appearance="outlined" class="metric-card">
+        <mat-icon>{{ metric.icon }}</mat-icon>
+        <span>{{ metric.label }}</span>
+        <strong>{{ metric.value }}</strong>
+      </mat-card>
+    }
+  </section>
+
+  @if (errorMessage()) {
+    <div class="error-state" role="alert">
+      <mat-icon>cloud_off</mat-icon>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <section class="dashboard-grid">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>description</mat-icon>
+        <mat-card-title>Recent Documents</mat-card-title>
+        <mat-card-subtitle>Latest files in your knowledge base.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (recentDocuments().length > 0) {
+          <div class="document-list">
+            @for (document of recentDocuments(); track document.id) {
+              <article class="document-row">
+                <div class="document-name">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <div><strong>{{ document.originalFileName }}</strong><span>{{ document.uploadedAt | date: 'mediumDate' }}</span></div>
+                </div>
+                <span class="status" [class]="'status ' + statusClass(document.status)">{{ statusLabel(document.status) }}</span>
+                <span class="version">v{{ document.versionNumber || 1 }}</span>
+              </article>
+            }
+          </div>
+          <a mat-button routerLink="/documents">View all documents <mat-icon>arrow_forward</mat-icon></a>
+        } @else if (!isLoading()) {
+          <div class="empty-state"><mat-icon>note_add</mat-icon><strong>No documents yet</strong><p>Upload a PDF or DOCX to build your knowledge base.</p><a mat-stroked-button routerLink="/documents">Go to Documents</a></div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>history</mat-icon>
+        <mat-card-title>Recent Activity</mat-card-title>
+        <mat-card-subtitle>Uploads and conversations, newest first.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (recentActivity().length > 0) {
+          <div class="activity-list">
+            @for (activity of recentActivity(); track activity.title + activity.occurredAt) {
+              <a [routerLink]="activity.route" class="activity-row">
+                <mat-icon>{{ activity.icon }}</mat-icon>
+                <div><strong>{{ activity.title }}</strong><span>{{ activity.detail }} · {{ activity.occurredAt | date: 'short' }}</span></div>
+              </a>
+            }
+          </div>
+        } @else if (!isLoading()) {
+          <div class="empty-state"><mat-icon>history</mat-icon><strong>No recent activity</strong><p>Your uploads and conversations will appear here.</p></div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
 </section>

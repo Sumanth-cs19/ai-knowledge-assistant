@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { DashboardLayoutComponent } from './layouts/dashboard-layout/dashboard-layout.component';
 import { ForbiddenComponent } from './shared/components/forbidden/forbidden.component';
@@ -54,10 +55,12 @@ export const routes: Routes = [
       },
       {
         path: 'profile',
-        loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent)
+        pathMatch: 'full',
+        redirectTo: 'settings'
       },
       {
         path: 'settings',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () => import('./features/settings/settings.component').then((m) => m.SettingsComponent)
       },
       {

@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { DEFAULT_USER_PREFERENCES, ThemePreference, UserPreferences } from '../models/preferences.model';
+import { DEFAULT_USER_PREFERENCES, UserPreferences } from '../models/preferences.model';
 
 const PREFERENCES_STORAGE_KEY = 'ai-knowledge-assistant.preferences';
 
@@ -12,26 +12,10 @@ export class PreferencesService {
   readonly preferences = computed(() => this.preferencesState());
   readonly isCompactSidebar = computed(() => this.preferencesState().compactSidebar);
 
-  initializeTheme(): void {
-    this.applyTheme(this.preferencesState().theme);
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (this.preferencesState().theme === 'system') {
-        this.applyTheme('system');
-      }
-    });
-  }
-
   updatePreferences(preferences: UserPreferences): void {
-    this.preferencesState.set(preferences);
-    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
-    this.applyTheme(preferences.theme);
-  }
-
-  updateTheme(theme: ThemePreference): void {
-    this.updatePreferences({
-      ...this.preferencesState(),
-      theme
-    });
+    const savedPreferences = { ...preferences };
+    this.preferencesState.set(savedPreferences);
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(savedPreferences));
   }
 
   resetPreferences(): void {
@@ -45,22 +29,14 @@ export class PreferencesService {
     }
 
     try {
+      const stored = JSON.parse(rawValue) as Partial<UserPreferences>;
       return {
-        ...DEFAULT_USER_PREFERENCES,
-        ...JSON.parse(rawValue) as Partial<UserPreferences>
+        defaultChatBehavior: stored.defaultChatBehavior === 'continue-last' ? 'continue-last' : 'new-chat',
+        streamingEnabled: stored.streamingEnabled ?? DEFAULT_USER_PREFERENCES.streamingEnabled,
+        compactSidebar: stored.compactSidebar ?? DEFAULT_USER_PREFERENCES.compactSidebar
       };
     } catch {
       return DEFAULT_USER_PREFERENCES;
     }
-  }
-
-  private applyTheme(theme: ThemePreference): void {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const resolvedTheme = theme === 'system'
-      ? prefersDark ? 'dark' : 'light'
-      : theme;
-
-    document.documentElement.dataset['theme'] = resolvedTheme;
-    document.body.dataset['theme'] = resolvedTheme;
   }
 }

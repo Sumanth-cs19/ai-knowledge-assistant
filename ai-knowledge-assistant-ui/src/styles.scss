@@ -10,18 +10,6 @@
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
-  --app-primary: #8ea2ff;
-  --app-accent: #7cc5ff;
-  --app-background: #0f172a;
-  --app-surface: #172033;
-  --app-surface-muted: #1e293b;
-  --app-border: #334155;
-  --app-text: #f8fafc;
-  --app-muted: #cbd5e1;
-  color-scheme: dark;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -75,59 +63,9 @@ a:hover {
   color: var(--app-text);
 }
 
-[data-theme="dark"] {
-  .auth-layout,
-  .chat-shell,
-  .documents-page,
-  .admin-page,
-  .profile-page,
-  .settings-page {
-    background: var(--app-background);
-    color: var(--app-text);
-  }
 
-  .auth-card,
-  .upload-zone,
-  .document-row,
-  .placeholder-grid > div,
-  .placeholder-panel,
-  .empty-state,
-  .detail-card,
-  .message .bubble,
-  .conversation-sidebar,
-  .chat-header,
-  .chat-input,
-  .stage-indicator,
-  .user-row,
-  .metric-card,
-  .details-grid div,
-  .mini-metrics div,
-  .compact-list div,
-  .profile-hero {
-    background: var(--app-surface);
-    border-color: var(--app-border);
-    color: var(--app-text);
-  }
-
-  h1,
-  h2,
-  h3,
-  .document-title h3,
-  .metric-card strong,
-  .mini-metrics strong,
-  .compact-list strong,
-  .details-grid dd,
-  .profile-summary strong {
-    color: var(--app-text);
-  }
-
-  p,
-  span,
-  .document-meta,
-  .metric-card span,
-  .mini-metrics span,
-  .compact-list span,
-  .profile-summary span {
-    color: var(--app-muted);
-  }
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
