@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAdminAnalyticsService, AdminAnalyticsService>();
+        services.AddScoped<IRagDiagnosticsService, RagDiagnosticsService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<ITextExtractionService, TextExtractionService>();
         services.AddScoped<IDocumentIndexingService, DocumentIndexingService>();

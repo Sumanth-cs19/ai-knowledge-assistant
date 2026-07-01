@@ -10,6 +10,9 @@ import {
   AdminOverviewDto,
   AdminUserAnalyticsDto,
   AdminUserDto,
+  RagDocumentDetailDto,
+  RagDocumentDiagnosticDto,
+  RagTestResponseDto,
   RoleDto
 } from '../models/admin.model';
 
@@ -59,5 +62,17 @@ export class AdminService {
 
   getFeedbackAnalytics(): Observable<AdminFeedbackAnalyticsDto> {
     return this.http.get<AdminFeedbackAnalyticsDto>(`${this.analyticsUrl}/feedback`);
+  }
+
+  getRagDocuments(): Observable<RagDocumentDiagnosticDto[]> {
+    return this.http.get<RagDocumentDiagnosticDto[]>(`${this.adminUrl}/rag/documents`);
+  }
+
+  getRagDocument(id: string): Observable<RagDocumentDetailDto> {
+    return this.http.get<RagDocumentDetailDto>(`${this.adminUrl}/rag/documents/${id}`);
+  }
+
+  testRag(documentId: string, question: string): Observable<RagTestResponseDto> {
+    return this.http.post<RagTestResponseDto>(`${this.adminUrl}/rag/test`, { documentId, question });
   }
 }

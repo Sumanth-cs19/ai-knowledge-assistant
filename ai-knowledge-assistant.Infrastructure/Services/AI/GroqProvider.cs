@@ -51,6 +51,12 @@ public sealed class GroqProvider : LocalProviderBase
         activity?.SetTag("ai.provider", Name);
         activity?.SetTag("ai.model", _settings.Model);
         var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation(
+            "Sending Groq RAG request. Model={Model}. ContextChunkCount={ContextChunkCount}. PromptLength={PromptLength}",
+            _settings.Model,
+            contextChunks.Count,
+            prompt.Length);
+        _logger.LogDebug("Groq RAG request prompt: {Prompt}", prompt);
 
         try
         {
@@ -88,6 +94,10 @@ public sealed class GroqProvider : LocalProviderBase
                 .GetProperty("message")
                 .GetProperty("content")
                 .GetString();
+            var totalTokens = payload.RootElement.TryGetProperty("usage", out var usage)
+                && usage.TryGetProperty("total_tokens", out var totalTokensElement)
+                ? totalTokensElement.GetInt32()
+                : (int?)null;
 
             if (string.IsNullOrWhiteSpace(answer))
             {
@@ -97,9 +107,12 @@ public sealed class GroqProvider : LocalProviderBase
             stopwatch.Stop();
             activity?.SetTag("ai.duration_ms", stopwatch.ElapsedMilliseconds);
             _logger.LogInformation(
-                "Groq generated a response with model {Model}. DurationMs={DurationMs}",
+                "Groq generated a response with model {Model}. DurationMs={DurationMs}. TokenUsage={TokenUsage}. ResponseLength={ResponseLength}",
                 _settings.Model,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                totalTokens,
+                answer.Length);
+            _logger.LogDebug("Raw Groq RAG response: {Response}", answer);
             return answer;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

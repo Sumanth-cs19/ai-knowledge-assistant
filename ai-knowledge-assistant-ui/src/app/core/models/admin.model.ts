@@ -74,3 +74,58 @@ export interface FeedbackRatingBreakdownDto {
   rating: number;
   count: number;
 }
+
+export interface RagDocumentDiagnosticDto {
+  documentId: string;
+  originalFileName: string;
+  storedFileName: string;
+  uploadedAt: string;
+  status: number | string;
+  versionNumber: number;
+  extractionQualityScore: number;
+  extractionQuality: string;
+  extractedTextLength: number;
+  chunkCount: number;
+  averageChunkSize: number;
+  embeddingProvider: string;
+  embeddingDimension: number;
+  storedEmbeddingCount: number;
+  vectorStatus: string;
+  warning: string | null;
+}
+
+export interface RagChunkDiagnosticDto {
+  chunkId: string;
+  chunkIndex: number;
+  characterCount: number;
+  content: string;
+  embeddingDimension: number;
+  embeddingStored: boolean;
+}
+
+export interface RagDocumentDetailDto {
+  document: RagDocumentDiagnosticDto;
+  extractedTextPreview: string;
+  chunks: RagChunkDiagnosticDto[];
+}
+
+export interface RagRetrievalResultDto {
+  documentId: string;
+  chunkId: string;
+  chunkIndex: number;
+  content: string;
+  similarity: number;
+  fileName: string;
+  originalFileName: string;
+  uploadedAt: string;
+  scoreType: string;
+}
+
+export interface RagTestResponseDto {
+  documentId: string;
+  question: string;
+  broadContextMode: boolean;
+  retrievalResults: RagRetrievalResultDto[];
+  finalPrompt: string;
+  rawAiResponse: string;
+}

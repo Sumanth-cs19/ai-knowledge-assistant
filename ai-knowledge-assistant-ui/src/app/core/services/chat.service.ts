@@ -198,7 +198,7 @@ export class ChatService {
       return {
         kind: hasNoRelevantContext ? 'no-context' : isDocumentNotReady ? 'not-indexed' : 'api',
         message: hasNoRelevantContext
-          ? 'I could not find this in your uploaded documents.'
+          ? 'No relevant information was found in the indexed documents.'
           : isDocumentNotReady
             ? 'No indexed document content is available yet. Wait for the document status to show Indexed, then try again.'
             : message,

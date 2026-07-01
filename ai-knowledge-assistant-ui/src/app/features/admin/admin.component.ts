@@ -30,6 +30,7 @@ import {
   ConfirmationDialogData
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { RagDiagnosticsComponent } from './rag-diagnostics/rag-diagnostics.component';
 
 @Component({
   selector: 'app-admin',
@@ -46,7 +47,8 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.com
     MatProgressBarModule,
     MatSelectModule,
     MatTabsModule,
-    SkeletonComponent
+    SkeletonComponent,
+    RagDiagnosticsComponent
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'

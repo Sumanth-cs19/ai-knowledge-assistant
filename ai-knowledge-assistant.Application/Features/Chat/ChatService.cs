@@ -17,7 +17,6 @@ public sealed class ChatService : IChatService
     private static readonly ActivitySource ActivitySource = new(Observability.ActivitySourceName);
     private const int ContextChunkCount = 5;
     private const int SummaryContextChunkCount = 12;
-    private const string NoContextAnswer = "I could not find this clearly in your uploaded documents.";
     private readonly IAIProvider _aiProvider;
     private readonly IConversationRepository _conversationRepository;
     private readonly ILogger<ChatService> _logger;
@@ -48,11 +47,12 @@ public sealed class ChatService : IChatService
         var (matches, summarizationMode) = await RetrieveContextAsync(userId, request, cancellationToken);
         activity?.SetTag("chat.summarization_mode", summarizationMode);
         activity?.SetTag("chat.citation_count", matches.Count);
-        var answer = NoContextAnswer;
+        var answer = RagPromptBuilder.NoContextAnswer;
 
         if (matches.Count > 0)
         {
-            var prompt = BuildPrompt(request.Question, matches, summarizationMode);
+            var prompt = RagPromptBuilder.Build(request.Question, matches, summarizationMode);
+            _logger.LogDebug("Final RAG prompt for user {UserId}: {Prompt}", userId, prompt);
             answer = await _aiProvider.GenerateAnswerAsync(
                 prompt,
                 matches.Select(match => match.Content).ToList(),
@@ -84,12 +84,13 @@ public sealed class ChatService : IChatService
 
         if (matches.Count == 0)
         {
-            answerBuilder.Append(NoContextAnswer);
-            yield return new ChatStreamEvent("token", NoContextAnswer);
+            answerBuilder.Append(RagPromptBuilder.NoContextAnswer);
+            yield return new ChatStreamEvent("token", RagPromptBuilder.NoContextAnswer);
         }
         else
         {
-            var prompt = BuildPrompt(request.Question, matches, summarizationMode);
+            var prompt = RagPromptBuilder.Build(request.Question, matches, summarizationMode);
+            _logger.LogDebug("Final streaming RAG prompt for user {UserId}: {Prompt}", userId, prompt);
             await foreach (var token in _aiProvider.StreamAnswerAsync(
                                prompt,
                                matches.Select(match => match.Content).ToList(),
@@ -120,16 +121,7 @@ public sealed class ChatService : IChatService
             return false;
         }
 
-        var normalized = string.Join(' ', question.Trim().ToLowerInvariant()
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-
-        return normalized.Contains("summarize", StringComparison.Ordinal)
-            || normalized.Contains("summary", StringComparison.Ordinal)
-            || normalized.Contains("what is this document about", StringComparison.Ordinal)
-            || normalized.Contains("what is the document about", StringComparison.Ordinal)
-            || normalized.Contains("what is this pdf about", StringComparison.Ordinal)
-            || normalized.Contains("give me an overview", StringComparison.Ordinal)
-            || normalized.Equals("give overview", StringComparison.Ordinal);
+        return RagPromptBuilder.IsBroadContextQuestion(question);
     }
 
     private async Task<(IReadOnlyCollection<SearchResultResponse> Matches, bool SummarizationMode)> RetrieveContextAsync(
@@ -215,35 +207,6 @@ public sealed class ChatService : IChatService
             .ToArray();
 
         return documentIds.Length == 0 ? null : documentIds;
-    }
-
-    private static string BuildPrompt(
-        string question,
-        IReadOnlyCollection<SearchResultResponse> matches,
-        bool summarizationMode)
-    {
-        var prompt = new StringBuilder();
-        prompt.AppendLine("You are an AI knowledge assistant. Answer the question using only the provided document context.");
-        prompt.AppendLine($"If the context does not contain the answer, say: \"{NoContextAnswer}\"");
-        prompt.AppendLine("Cite sources inline using [source: original-file-name#chunk-index].");
-        if (summarizationMode)
-        {
-            prompt.AppendLine("Summarization mode is active. Produce a coherent overview from the ordered document chunks, covering the main topic, key ideas, and conclusions without inventing missing details.");
-        }
-        prompt.AppendLine();
-        prompt.AppendLine("Question:");
-        prompt.AppendLine(question.Trim());
-        prompt.AppendLine();
-        prompt.AppendLine("Context:");
-
-        foreach (var match in matches)
-        {
-            prompt.AppendLine($"[source: {match.OriginalFileName}#{match.ChunkIndex}]");
-            prompt.AppendLine(match.Content);
-            prompt.AppendLine();
-        }
-
-        return prompt.ToString();
     }
 
     private static void ValidateRequest(Guid userId, ChatAskRequest request)

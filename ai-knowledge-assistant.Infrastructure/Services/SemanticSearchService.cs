@@ -118,6 +118,18 @@ public sealed class SemanticSearchService : ISemanticSearchService
             _scoreType,
             results.Select(result => result.ChunkId).ToArray(),
             results.Select(result => Math.Round(result.Similarity, 4)).ToArray());
+        foreach (var result in results)
+        {
+            _logger.LogDebug(
+                "RAG retrieval result. DocumentId={DocumentId}. DocumentName={DocumentName}. ChunkId={ChunkId}. ChunkIndex={ChunkIndex}. Score={Score}. ScoreType={ScoreType}. Preview={Preview}",
+                result.DocumentId,
+                result.OriginalFileName,
+                result.ChunkId,
+                result.ChunkIndex,
+                Math.Round(result.Similarity, 6),
+                result.ScoreType,
+                result.Content.Length <= 300 ? result.Content : result.Content[..300]);
+        }
 
         return results;
     }
@@ -192,6 +204,16 @@ public sealed class SemanticSearchService : ISemanticSearchService
             targetDocumentIds,
             results.Count,
             results.Select(result => result.ChunkId).ToArray());
+        foreach (var result in results)
+        {
+            _logger.LogDebug(
+                "RAG broad-context result. DocumentId={DocumentId}. DocumentName={DocumentName}. ChunkId={ChunkId}. ChunkIndex={ChunkIndex}. Preview={Preview}",
+                result.DocumentId,
+                result.OriginalFileName,
+                result.ChunkId,
+                result.ChunkIndex,
+                result.Content.Length <= 300 ? result.Content : result.Content[..300]);
+        }
 
         return results;
     }

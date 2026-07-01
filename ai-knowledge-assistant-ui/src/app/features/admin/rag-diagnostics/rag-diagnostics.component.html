@@ -1,0 +1,95 @@
+<section class="diagnostics" aria-labelledby="rag-diagnostics-title">
+  <header>
+    <div>
+      <h3 id="rag-diagnostics-title">RAG Diagnostics</h3>
+      <p>Temporary Admin-only visibility into extraction, chunks, vectors, retrieval, prompts, and provider output.</p>
+    </div>
+  </header>
+
+  @if (isLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading RAG diagnostics" />
+  } @else if (errorMessage()) {
+    <div class="state error"><mat-icon>error</mat-icon><p>{{ errorMessage() }}</p></div>
+  } @else if (documents().length === 0) {
+    <div class="state"><mat-icon>find_in_page</mat-icon><p>No documents are available for diagnostics.</p></div>
+  } @else {
+    <div class="document-list">
+      @for (document of documents(); track document.documentId) {
+        <mat-expansion-panel (opened)="loadDetail(document.documentId)">
+          <mat-expansion-panel-header>
+            <mat-panel-title>{{ document.originalFileName }}</mat-panel-title>
+            <mat-panel-description>
+              {{ statusLabel(document.status) }} · {{ document.chunkCount }} chunks · {{ document.vectorStatus }}
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <dl class="summary-grid">
+            <div><dt>Uploaded</dt><dd>{{ document.uploadedAt | date: 'medium' }}</dd></div>
+            <div><dt>Version</dt><dd>{{ document.versionNumber }}</dd></div>
+            <div><dt>Text length</dt><dd>{{ document.extractedTextLength }}</dd></div>
+            <div><dt>Average chunk</dt><dd>{{ document.averageChunkSize | number: '1.0-1' }} chars</dd></div>
+            <div><dt>Extraction quality</dt><dd>{{ document.extractionQuality }} ({{ document.extractionQualityScore | number: '1.2-2' }})</dd></div>
+            <div><dt>Embedding</dt><dd>{{ document.embeddingProvider }} · {{ document.embeddingDimension }} dimensions</dd></div>
+          </dl>
+
+          @if (document.warning) {
+            <p class="warning"><mat-icon>warning</mat-icon>{{ document.warning }}</p>
+          }
+
+          @if (details()[document.documentId]; as detail) {
+            <h4>Extracted text preview</h4>
+            <pre>{{ detail.extractedTextPreview }}</pre>
+            <h4>Chunks and embeddings</h4>
+            <div class="chunks">
+              @for (chunk of detail.chunks; track chunk.chunkId) {
+                <article>
+                  <div><strong>Chunk {{ chunk.chunkIndex }}</strong><span>{{ chunk.characterCount }} chars · {{ chunk.embeddingDimension }} dimensions · {{ chunk.embeddingStored ? 'stored' : 'missing' }}</span></div>
+                  <p>{{ chunk.content }}</p>
+                </article>
+              }
+            </div>
+          } @else {
+            <mat-progress-bar mode="indeterminate" aria-label="Loading document details" />
+          }
+        </mat-expansion-panel>
+      }
+    </div>
+
+    <section class="test-query" aria-labelledby="test-query-title">
+      <h3 id="test-query-title">Test Query</h3>
+      <div class="test-controls">
+        <mat-form-field appearance="outline">
+          <mat-label>Document</mat-label>
+          <mat-select [formControl]="documentControl">
+            @for (document of documents(); track document.documentId) {
+              <mat-option [value]="document.documentId">{{ document.originalFileName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="question-field">
+          <mat-label>Question</mat-label>
+          <textarea matInput rows="3" [formControl]="questionControl"></textarea>
+        </mat-form-field>
+        <button mat-flat-button type="button" [disabled]="isTesting()" (click)="runTest()">
+          <mat-icon>science</mat-icon>{{ isTesting() ? 'Running...' : 'Run retrieval' }}
+        </button>
+      </div>
+      @if (isTesting()) { <mat-progress-bar mode="indeterminate" aria-label="Running RAG test" /> }
+
+      @if (testResult(); as result) {
+        <div class="result-meta"><strong>{{ result.broadContextMode ? 'Broad document mode' : 'Hybrid semantic search' }}</strong><span>{{ result.retrievalResults.length }} chunks selected</span></div>
+        <h4>Retrieval results</h4>
+        <div class="chunks">
+          @for (item of result.retrievalResults; track item.chunkId) {
+            <article>
+              <div><strong>{{ item.originalFileName }} · Chunk {{ item.chunkIndex }}</strong><span>Score {{ item.similarity | number: '1.3-3' }} · {{ item.scoreType }}</span></div>
+              <p>{{ item.content }}</p>
+            </article>
+          } @empty { <p class="muted">No relevant chunks passed the retrieval threshold.</p> }
+        </div>
+        <h4>Final prompt</h4><pre>{{ result.finalPrompt }}</pre>
+        <h4>Raw AI response</h4><pre>{{ result.rawAiResponse }}</pre>
+      }
+    </section>
+  }
+</section>

@@ -7,7 +7,7 @@ public sealed record TextQualityResult(double Score, bool IsLowQuality, int Char
 public static partial class TextQualityAnalyzer
 {
     public const string LowQualityMessage =
-        "Text extraction quality is low. This PDF may be scanned or handwritten and may require OCR.";
+        "This document contains poor quality extracted text. Answers may be inaccurate. This PDF may be scanned or handwritten and may require OCR.";
 
     private const double MinimumQualityScore = 0.45;
 

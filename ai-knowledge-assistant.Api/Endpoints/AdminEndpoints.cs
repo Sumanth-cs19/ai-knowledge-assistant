@@ -69,6 +69,53 @@ public static class AdminEndpoints
             .WithName($"GetAdminRoles{nameSuffix}")
             .WithOpenApi();
 
+        group.MapGet("/rag/documents", async (
+                IRagDiagnosticsService diagnosticsService,
+                CancellationToken cancellationToken) =>
+            {
+                var response = await diagnosticsService.GetDocumentsAsync(cancellationToken);
+                return Results.Ok(response);
+            })
+            .WithName($"GetRagDiagnosticDocuments{nameSuffix}")
+            .WithSummary("Lists indexed document, chunk, and vector diagnostics.")
+            .WithOpenApi();
+
+        group.MapGet("/rag/documents/{id:guid}", async (
+                Guid id,
+                IRagDiagnosticsService diagnosticsService,
+                CancellationToken cancellationToken) =>
+            {
+                var response = await diagnosticsService.GetDocumentAsync(id, cancellationToken);
+                return Results.Ok(response);
+            })
+            .WithName($"GetRagDiagnosticDocument{nameSuffix}")
+            .WithSummary("Returns extracted text, chunks, and embedding diagnostics for one document.")
+            .WithOpenApi();
+
+        group.MapGet("/rag/debug/{id:guid}", async (
+                Guid id,
+                IRagDiagnosticsService diagnosticsService,
+                CancellationToken cancellationToken) =>
+            {
+                var response = await diagnosticsService.GetDocumentAsync(id, cancellationToken);
+                return Results.Ok(response);
+            })
+            .WithName($"DebugRagDocument{nameSuffix}")
+            .WithSummary("Temporary Admin-only RAG debug view for a document.")
+            .WithOpenApi();
+
+        group.MapPost("/rag/test", async (
+                RagTestRequest request,
+                IRagDiagnosticsService diagnosticsService,
+                CancellationToken cancellationToken) =>
+            {
+                var response = await diagnosticsService.TestAsync(request, cancellationToken);
+                return Results.Ok(response);
+            })
+            .WithName($"TestRagPipeline{nameSuffix}")
+            .WithSummary("Runs retrieval, prompt construction, and the configured AI provider for diagnostics.")
+            .WithOpenApi();
+
         return endpoints;
     }
 }

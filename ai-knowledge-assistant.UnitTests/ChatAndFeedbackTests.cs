@@ -16,6 +16,8 @@ public sealed class ChatAndFeedbackTests
     [InlineData("Summarize this document")]
     [InlineData("give summary")]
     [InlineData("what is this document about")]
+    [InlineData("list the important points")]
+    [InlineData("explain chapter 1")]
     public void Summarization_queries_are_detected(string question)
     {
         Assert.True(ChatService.IsSummarizationQuestion(question));
@@ -59,8 +61,17 @@ public sealed class ChatAndFeedbackTests
 
         var response = await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("unrelated question"));
 
-        Assert.Equal("I could not find this clearly in your uploaded documents.", response.Answer);
+        Assert.Equal(RagPromptBuilder.NoContextAnswer, response.Answer);
         Assert.Empty(response.Citations);
+    }
+
+    [Fact]
+    public void Prompt_requires_grounded_no_context_response()
+    {
+        var prompt = RagPromptBuilder.Build("What is NPS?", [], false);
+
+        Assert.Contains(RagPromptBuilder.NoContextAnswer, prompt, StringComparison.Ordinal);
+        Assert.Contains("Do not use outside knowledge", prompt, StringComparison.Ordinal);
     }
 
     [Fact]
