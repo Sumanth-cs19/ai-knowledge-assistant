@@ -36,6 +36,8 @@ public static class RagPromptBuilder
     {
         var prompt = new StringBuilder();
         prompt.AppendLine("You are an AI knowledge assistant. Answer using only the indexed document context below.");
+        prompt.AppendLine("The context below has already passed relevance screening and must be used when it directly answers the question.");
+        prompt.AppendLine("For acronym or definition questions, look for the expanded phrase in the context and answer directly.");
         prompt.AppendLine($"If the context is missing, unclear, or insufficient, respond exactly: \"{NoContextAnswer}\"");
         prompt.AppendLine("Do not use outside knowledge or invent details. Cite claims using [source: original-file-name#chunk-index].");
         if (broadContextMode)

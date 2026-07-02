@@ -102,6 +102,13 @@ internal sealed class FakeSemanticSearchService : ISemanticSearchService
 
 internal sealed class FakeAIProvider : IAIProvider
 {
+    private readonly string _answer;
+
+    public FakeAIProvider(string answer = "Grounded fake answer [source: alpha.pdf#0]")
+    {
+        _answer = answer;
+    }
+
     public string Name => "Fake";
 
     public int GenerateCallCount { get; private set; }
@@ -118,7 +125,7 @@ internal sealed class FakeAIProvider : IAIProvider
         GenerateCallCount++;
         LastPrompt = prompt;
         LastContextChunks = contextChunks;
-        return Task.FromResult("Grounded fake answer [source: alpha.pdf#0]");
+        return Task.FromResult(_answer);
     }
 
     public async IAsyncEnumerable<string> StreamAnswerAsync(
@@ -126,9 +133,14 @@ internal sealed class FakeAIProvider : IAIProvider
         IReadOnlyCollection<string> contextChunks,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        yield return "Grounded ";
-        await Task.CompletedTask;
-        yield return "fake answer";
+        LastPrompt = prompt;
+        LastContextChunks = contextChunks;
+        foreach (var token in _answer.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return $"{token} ";
+            await Task.Yield();
+        }
     }
 }
 

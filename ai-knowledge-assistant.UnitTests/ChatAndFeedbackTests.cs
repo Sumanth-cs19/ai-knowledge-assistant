@@ -97,6 +97,49 @@ public sealed class ChatAndFeedbackTests
     }
 
     [Fact]
+    public async Task Valid_citation_prevents_provider_no_context_fallback()
+    {
+        var result = CreateNpsSearchResult(0.30);
+        var service = new ChatService(
+            new FakeSemanticSearchService([result]),
+            new FakeAIProvider(RagPromptBuilder.NoContextAnswer),
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+
+        var response = await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("What is NPS"));
+
+        Assert.DoesNotContain(RagPromptBuilder.NoContextAnswer, response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("NPS stands for National Pension System", response.Answer, StringComparison.Ordinal);
+        Assert.Single(response.Citations);
+    }
+
+    [Fact]
+    public async Task Streaming_valid_source_suppresses_provider_no_context_tokens()
+    {
+        var result = CreateNpsSearchResult(0.30);
+        var service = new ChatService(
+            new FakeSemanticSearchService([result]),
+            new FakeAIProvider(RagPromptBuilder.NoContextAnswer),
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+        var events = new List<ChatStreamEvent>();
+
+        await foreach (var streamEvent in service.AskStreamAsync(
+                           Guid.NewGuid(),
+                           new ChatAskRequest("What is NPS")))
+        {
+            events.Add(streamEvent);
+        }
+
+        var streamedAnswer = string.Concat(events.Where(item => item.Type == "token").Select(item => item.Token));
+        Assert.DoesNotContain(RagPromptBuilder.NoContextAnswer, streamedAnswer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("NPS stands for National Pension System", streamedAnswer, StringComparison.Ordinal);
+        var completed = Assert.Single(events, item => item.Type == "complete");
+        Assert.NotNull(completed.Response);
+        Assert.Single(completed.Response.Citations);
+    }
+
+    [Fact]
     public async Task No_context_response_is_used_when_all_chunks_fail_provider_threshold()
     {
         var result = new SearchResultResponse(
@@ -199,5 +242,19 @@ public sealed class ChatAndFeedbackTests
 
         Assert.Equal(5, response.Rating);
         Assert.Single(repository.Feedback);
+    }
+
+    private static SearchResultResponse CreateNpsSearchResult(double similarity)
+    {
+        return new SearchResultResponse(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            0,
+            "NATIONAL PENSION SYSTEM PRAN Mapping Process",
+            similarity,
+            "stored.pdf",
+            "NPS_Shifting_Process.pdf",
+            DateTime.UtcNow,
+            "local-fallback");
     }
 }

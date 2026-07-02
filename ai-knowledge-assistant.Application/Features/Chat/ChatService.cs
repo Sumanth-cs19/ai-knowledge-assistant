@@ -52,11 +52,20 @@ public sealed class ChatService : IChatService
         if (matches.Count > 0)
         {
             var prompt = RagPromptBuilder.Build(request.Question, matches, summarizationMode);
-            _logger.LogDebug("Final RAG prompt for user {UserId}: {Prompt}", userId, prompt);
+            LogPromptContext(userId, matches, prompt, streaming: false);
             answer = await _aiProvider.GenerateAnswerAsync(
                 prompt,
                 matches.Select(match => match.Content).ToList(),
                 cancellationToken);
+
+            if (RagAnswerGuard.IsNoContextAnswer(answer))
+            {
+                _logger.LogWarning(
+                    "AI provider returned a no-context answer despite {AcceptedSourceCount} accepted sources for user {UserId}. Using a grounded extractive answer.",
+                    matches.Count,
+                    userId);
+                answer = RagAnswerGuard.BuildGroundedExtractiveAnswer(request.Question, matches);
+            }
         }
 
         if (string.IsNullOrWhiteSpace(answer))
@@ -64,6 +73,7 @@ public sealed class ChatService : IChatService
             throw new InvalidOperationException("The language model did not return an answer.");
         }
 
+        LogAnswerDecision(userId, matches, answer);
         return await SaveResponseAsync(userId, request, answer, matches, cancellationToken);
     }
 
@@ -85,19 +95,52 @@ public sealed class ChatService : IChatService
         if (matches.Count == 0)
         {
             answerBuilder.Append(RagPromptBuilder.NoContextAnswer);
+            _logger.LogInformation(
+                "Streaming RAG fallback selected for user {UserId}. AcceptedSourceCount=0. FallbackAnswerUsed=true",
+                userId);
             yield return new ChatStreamEvent("token", RagPromptBuilder.NoContextAnswer);
         }
         else
         {
             var prompt = RagPromptBuilder.Build(request.Question, matches, summarizationMode);
-            _logger.LogDebug("Final streaming RAG prompt for user {UserId}: {Prompt}", userId, prompt);
+            LogPromptContext(userId, matches, prompt, streaming: true);
+            var guardedTokens = new StringBuilder();
+            var tokensReleased = false;
+
             await foreach (var token in _aiProvider.StreamAnswerAsync(
                                prompt,
                                matches.Select(match => match.Content).ToList(),
                                cancellationToken))
             {
                 answerBuilder.Append(token);
-                yield return new ChatStreamEvent("token", token);
+                if (tokensReleased)
+                {
+                    yield return new ChatStreamEvent("token", token);
+                    continue;
+                }
+
+                guardedTokens.Append(token);
+                if (!RagAnswerGuard.CouldBeNoContextAnswer(guardedTokens.ToString()))
+                {
+                    tokensReleased = true;
+                    yield return new ChatStreamEvent("token", guardedTokens.ToString());
+                }
+            }
+
+            if (!tokensReleased)
+            {
+                var providerAnswer = answerBuilder.ToString();
+                if (RagAnswerGuard.IsNoContextAnswer(providerAnswer))
+                {
+                    _logger.LogWarning(
+                        "Streaming AI provider returned a no-context answer despite {AcceptedSourceCount} accepted sources for user {UserId}. Using a grounded extractive answer.",
+                        matches.Count,
+                        userId);
+                    answerBuilder.Clear();
+                    answerBuilder.Append(RagAnswerGuard.BuildGroundedExtractiveAnswer(request.Question, matches));
+                }
+
+                yield return new ChatStreamEvent("token", answerBuilder.ToString());
             }
         }
 
@@ -107,6 +150,7 @@ public sealed class ChatService : IChatService
             throw new InvalidOperationException("The language model did not return an answer.");
         }
 
+        LogAnswerDecision(userId, matches, answer);
         var response = await SaveResponseAsync(userId, request, answer, matches, cancellationToken);
 
         yield return new ChatStreamEvent(
@@ -144,19 +188,56 @@ public sealed class ChatService : IChatService
         var matches = retrievedMatches
             .Where(RagRelevancePolicy.IsRelevant)
             .ToList();
+        var rejectedCount = retrievedMatches.Count - matches.Count;
+        var thresholds = retrievedMatches
+            .Select(match => match.ScoreType)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(scoreType => $"{scoreType}:{RagRelevancePolicy.GetMinimumSimilarity(scoreType):0.00}")
+            .ToArray();
 
         _logger.LogInformation(
-            "Chat context selected for user {UserId}. SummarizationMode={SummarizationMode}. RequestedDocumentIds={RequestedDocumentIds}. RetrievedCount={RetrievedCount}. AcceptedCount={AcceptedCount}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}. ScoreTypes={ScoreTypes}",
+            "Chat context selected for user {UserId}. SummarizationMode={SummarizationMode}. RequestedDocumentIds={RequestedDocumentIds}. RetrievedSourceCount={RetrievedSourceCount}. AcceptedSourceCount={AcceptedSourceCount}. RejectedSourceCount={RejectedSourceCount}. Thresholds={Thresholds}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}. ScoreTypes={ScoreTypes}",
             userId,
             summarizationMode,
             documentIds ?? [],
             retrievedMatches.Count,
             matches.Count,
+            rejectedCount,
+            thresholds,
             matches.Select(match => match.ChunkId).ToArray(),
             matches.Select(match => Math.Round(match.Similarity, 4)).ToArray(),
             matches.Select(match => match.ScoreType).ToArray());
 
         return (matches, summarizationMode);
+    }
+
+    private void LogPromptContext(
+        Guid userId,
+        IReadOnlyCollection<SearchResultResponse> matches,
+        string prompt,
+        bool streaming)
+    {
+        _logger.LogInformation(
+            "RAG prompt created for user {UserId}. Streaming={Streaming}. AcceptedSourceCount={AcceptedSourceCount}. PromptContextLength={PromptContextLength}. PromptLength={PromptLength}",
+            userId,
+            streaming,
+            matches.Count,
+            matches.Sum(match => match.Content.Length),
+            prompt.Length);
+        _logger.LogDebug("Final RAG prompt for user {UserId}: {Prompt}", userId, prompt);
+    }
+
+    private void LogAnswerDecision(
+        Guid userId,
+        IReadOnlyCollection<SearchResultResponse> matches,
+        string answer)
+    {
+        _logger.LogInformation(
+            "RAG answer decision for user {UserId}. AcceptedSourceCount={AcceptedSourceCount}. FallbackAnswerUsed={FallbackAnswerUsed}. AnswerLength={AnswerLength}",
+            userId,
+            matches.Count,
+            RagAnswerGuard.IsNoContextAnswer(answer),
+            answer.Length);
     }
 
     private async Task<ChatResponse> SaveResponseAsync(
