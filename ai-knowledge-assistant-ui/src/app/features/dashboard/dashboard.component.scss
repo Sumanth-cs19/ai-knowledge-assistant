@@ -39,7 +39,8 @@ mat-card-content { margin-top: 1rem; }
 .activity-row strong { color: var(--app-text); font-size: 0.88rem; overflow-wrap: anywhere; }
 .empty-state { align-items: center; color: var(--app-muted); display: grid; gap: 0.5rem; justify-items: center; padding: 2rem 1rem; text-align: center; }
 .empty-state strong { color: var(--app-text); }
-.error-state { align-items: center; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #9a3412; display: flex; gap: 0.5rem; padding: 0.75rem; }
+.error-state { align-items: center; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; color: #9a3412; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; }
+.error-state span { flex: 1 1 280px; }
 @media (max-width: 1050px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-grid { grid-template-columns: 1fr; } .checklist { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .quick-actions { align-items: stretch; display: grid; } .quick-actions nav { display: grid; grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .metric-grid { grid-template-columns: 1fr; } .document-header { display: none; } .document-row { align-items: start; grid-template-columns: minmax(0, 1fr) auto; } .upload-date { grid-column: 1; padding-left: 2.55rem; } .status { grid-column: 2; grid-row: 1; } .version { grid-column: 2; grid-row: 2; text-align: right; } }

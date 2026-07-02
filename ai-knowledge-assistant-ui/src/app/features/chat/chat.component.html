@@ -79,7 +79,7 @@
         </section>
       }
 
-      @if (isGenerating()) {
+      @if (isGenerating() || isLoadingConversation()) {
         <mat-progress-bar mode="indeterminate" />
       }
 
@@ -91,7 +91,14 @@
       }
 
       <main #messageViewport class="messages" (scroll)="onMessagesScroll()" aria-live="polite">
-        @if (documentAvailability() === 'loading') {
+        @if (isLoadingConversation()) {
+          <div class="document-gate" role="status">
+            <mat-icon class="gate-icon processing">sync</mat-icon>
+            <h3>Loading conversation</h3>
+            <p>Retrieving previous messages...</p>
+            <mat-progress-bar mode="indeterminate" />
+          </div>
+        } @else if (documentAvailability() === 'loading') {
           <div class="document-gate" role="status">
             <mat-icon class="gate-icon processing">hourglass_top</mat-icon>
             <h3>Checking your documents</h3>
@@ -165,7 +172,7 @@
 
       <app-chat-input
         [isGenerating]="isGenerating()"
-        [isUnavailable]="isCreatingConversation() || !canAskQuestions()"
+        [isUnavailable]="isCreatingConversation() || isLoadingConversation() || !canAskQuestions()"
         (sendMessage)="sendMessage($event)"
         (stopGeneration)="stopGeneration()" />
     </mat-sidenav-content>

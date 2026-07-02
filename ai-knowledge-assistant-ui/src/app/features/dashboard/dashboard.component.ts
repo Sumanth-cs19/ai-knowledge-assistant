@@ -39,7 +39,7 @@ export class DashboardComponent {
     .slice(0, 5));
   protected readonly indexedDocuments = computed(() => this.documents()
     .filter((document) => this.statusLabel(document.status) === 'Indexed').length);
-  protected readonly showGettingStarted = computed(() => !this.isLoading() && (
+  protected readonly showGettingStarted = computed(() => !this.isLoading() && !this.errorMessage() && (
     this.documents().length === 0
     || this.indexedDocuments() === 0
     || this.totalConversations() === 0

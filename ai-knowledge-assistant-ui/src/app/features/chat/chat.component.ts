@@ -55,6 +55,7 @@ export class ChatComponent implements OnDestroy {
   protected readonly messages = signal<ChatUiMessage[]>([]);
   protected readonly isGenerating = signal(false);
   protected readonly isCreatingConversation = signal(false);
+  protected readonly isLoadingConversation = signal(false);
   protected readonly documents = signal<DocumentDto[]>([]);
   protected readonly documentAvailability = signal<DocumentAvailability>('loading');
   protected readonly generationStage = signal<'idle' | 'searching' | 'thinking' | 'generating'>('idle');
@@ -128,10 +129,20 @@ export class ChatComponent implements OnDestroy {
   protected openConversation(id: string): void {
     this.stopGeneration();
     this.activeConversationId.set(id);
-    this.conversationService.getConversationMessages(id).subscribe({
+    this.messages.set([]);
+    this.isLoadingConversation.set(true);
+    this.chatStatus.set({ kind: 'asking', message: 'Loading conversation...' });
+    this.conversationService.getConversationMessages(id).pipe(
+      finalize(() => this.isLoadingConversation.set(false))
+    ).subscribe({
       next: (response) => {
         this.messages.set(response.items.map((message) => this.toUiMessage(message)));
+        this.chatStatus.set(null);
         this.scrollToBottom();
+      },
+      error: () => {
+        this.chatStatus.set({ kind: 'error', message: 'Conversation messages could not be loaded.' });
+        this.toastr.error('Conversation messages could not be loaded.', 'Chat unavailable');
       }
     });
   }
@@ -373,6 +384,7 @@ export class ChatComponent implements OnDestroy {
     this.isGenerating.set(false);
     this.generationStage.set('idle');
     this.chatStatus.set({ kind: 'success', message: 'Answer received.' });
+    this.toastr.success('Answer received.', 'Chat');
     this.abortController = null;
 
     if (response?.conversationId) {
@@ -418,6 +430,7 @@ export class ChatComponent implements OnDestroy {
     this.isGenerating.set(false);
     this.generationStage.set('idle');
     this.chatStatus.set({ kind: 'success', message: 'Answer received.' });
+    this.toastr.success('Answer received.', 'Chat');
     this.abortController = null;
     this.messages.update((messages) => messages.map((message) => message.id === messageId
       ? { ...message, isStreaming: false }

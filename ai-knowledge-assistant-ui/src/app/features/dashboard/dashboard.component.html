@@ -11,7 +11,7 @@
         <mat-card appearance="outlined"><app-skeleton [rows]="2" /></mat-card>
       }
     </section>
-  } @else {
+  } @else if (!errorMessage()) {
     <section class="metric-grid" aria-label="Workspace overview">
       @for (metric of metricCards(); track metric.label) {
         <mat-card appearance="outlined" class="metric-card">
@@ -19,6 +19,14 @@
         </mat-card>
       }
     </section>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-state" role="alert">
+      <mat-icon>cloud_off</mat-icon>
+      <span>{{ errorMessage() }}</span>
+      <button mat-stroked-button type="button" (click)="refresh()"><mat-icon>refresh</mat-icon>Try again</button>
+    </div>
   }
 
   <section class="quick-actions" aria-labelledby="quick-actions-title">
@@ -47,11 +55,8 @@
     </mat-card>
   }
 
-  @if (errorMessage()) {
-    <div class="error-state" role="alert"><mat-icon>cloud_off</mat-icon><span>{{ errorMessage() }}</span></div>
-  }
-
-  <section class="dashboard-grid">
+  @if (!isLoading() && !errorMessage()) {
+    <section class="dashboard-grid">
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-icon mat-card-avatar>description</mat-icon>
@@ -99,5 +104,6 @@
         }
       </mat-card-content>
     </mat-card>
-  </section>
+    </section>
+  }
 </section>

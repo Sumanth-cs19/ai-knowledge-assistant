@@ -74,6 +74,7 @@ export class DocumentsComponent implements OnDestroy {
   protected readonly uploadProgress = signal(0);
   protected readonly uploadStatus = signal<{ kind: 'uploading' | 'success' | 'error'; message: string } | null>(null);
   protected readonly isLoadingDocuments = signal(true);
+  protected readonly documentsError = signal<string | null>(null);
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal(5);
 
@@ -222,6 +223,10 @@ export class DocumentsComponent implements OnDestroy {
     this.pageSize.set(event.pageSize);
   }
 
+  protected refreshDocuments(): void {
+    this.loadDocuments();
+  }
+
   protected chunkPageChanged(event: PageEvent): void {
     const document = this.selectedDocument();
     if (!document) {
@@ -253,13 +258,17 @@ export class DocumentsComponent implements OnDestroy {
 
   private loadDocuments(): void {
     this.isLoadingDocuments.set(true);
+    this.documentsError.set(null);
     this.documentService.getMyDocuments().subscribe({
       next: (response) => {
         this.documents.set(response);
         this.syncDocumentPolling(response);
         this.isLoadingDocuments.set(false);
       },
-      error: () => this.isLoadingDocuments.set(false)
+      error: () => {
+        this.documentsError.set('Documents could not be loaded. Check the API connection and try again.');
+        this.isLoadingDocuments.set(false);
+      }
     });
   }
 

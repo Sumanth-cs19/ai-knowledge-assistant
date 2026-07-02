@@ -67,6 +67,18 @@
         <div class="document-skeleton">
           <app-skeleton [rows]="4" />
         </div>
+      } @else if (documentsError()) {
+        <div class="load-error" role="alert">
+          <mat-icon>cloud_off</mat-icon>
+          <div>
+            <h3>Documents unavailable</h3>
+            <p>{{ documentsError() }}</p>
+          </div>
+          <button mat-stroked-button type="button" (click)="refreshDocuments()">
+            <mat-icon>refresh</mat-icon>
+            Try again
+          </button>
+        </div>
       } @else if (documents().length === 0) {
         <div class="empty-state">
           <mat-icon>folder_open</mat-icon>

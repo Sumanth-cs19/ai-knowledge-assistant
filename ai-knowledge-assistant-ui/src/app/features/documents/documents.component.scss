@@ -199,6 +199,40 @@
   padding: 1.25rem;
 }
 
+.load-error {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #9a3412;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.load-error h3,
+.load-error p {
+  margin: 0;
+}
+
+.load-error p {
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 600px) {
+  .load-error {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .load-error button {
+    grid-column: 1 / -1;
+  }
+}
+
 .close-panel {
   margin-left: auto;
 }
