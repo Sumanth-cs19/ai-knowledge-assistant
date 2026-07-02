@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using ai_knowledge_assistant.Application.Common;
 using ai_knowledge_assistant.Application.DTOs.Search;
 using ai_knowledge_assistant.Application.Exceptions;
+using ai_knowledge_assistant.Application.Features.Chat;
 using ai_knowledge_assistant.Application.Interfaces;
 using ai_knowledge_assistant.Domain.Enums;
 using ai_knowledge_assistant.Infrastructure.Identity;
@@ -24,7 +25,6 @@ public sealed class SemanticSearchService : ISemanticSearchService
     };
     private const int DefaultTopK = 5;
     private const int MaxTopK = 20;
-    private const double MinimumRelevantScore = 0.08;
     private readonly ApplicationDbContext _context;
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly ILogger<SemanticSearchService> _logger;
@@ -102,7 +102,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 var combinedScore = CalculateCombinedScore(vectorScore, keywordScore);
                 return result with { Similarity = combinedScore };
             })
-            .Where(result => result.Similarity >= MinimumRelevantScore)
+            .Where(RagRelevancePolicy.IsRelevant)
             .OrderByDescending(result => result.Similarity)
             .Take(topK)
             .ToList();
@@ -111,11 +111,12 @@ public sealed class SemanticSearchService : ISemanticSearchService
         activity?.SetTag("search.result_count", results.Count);
         activity?.SetTag("search.duration_ms", stopwatch.ElapsedMilliseconds);
         _logger.LogInformation(
-            "Semantic hybrid search completed for user {UserId}. Results={ResultCount}. DurationMs={DurationMs}. ScoreType={ScoreType}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}",
+            "Semantic hybrid search completed for user {UserId}. Results={ResultCount}. DurationMs={DurationMs}. ScoreType={ScoreType}. MinimumSimilarity={MinimumSimilarity}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}",
             userId,
             results.Count,
             stopwatch.ElapsedMilliseconds,
             _scoreType,
+            RagRelevancePolicy.GetMinimumSimilarity(_scoreType),
             results.Select(result => result.ChunkId).ToArray(),
             results.Select(result => Math.Round(result.Similarity, 4)).ToArray());
         foreach (var result in results)

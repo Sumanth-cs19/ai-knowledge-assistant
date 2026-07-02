@@ -66,6 +66,64 @@ public sealed class ChatAndFeedbackTests
     }
 
     [Fact]
+    public async Task Local_fallback_chunk_with_point_30_score_is_accepted_and_cited()
+    {
+        var result = new SearchResultResponse(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            0,
+            "NATIONAL PENSION SYSTEM PRAN Mapping Process",
+            0.30,
+            "stored.pdf",
+            "NPS_Shifting_Process.pdf",
+            DateTime.UtcNow,
+            "local-fallback");
+        var aiProvider = new FakeAIProvider();
+        var service = new ChatService(
+            new FakeSemanticSearchService([result]),
+            aiProvider,
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+
+        var response = await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("What is NPS"));
+
+        Assert.NotEqual(RagPromptBuilder.NoContextAnswer, response.Answer);
+        Assert.Equal(1, aiProvider.GenerateCallCount);
+        Assert.Contains(result.Content, aiProvider.LastContextChunks);
+        Assert.Contains(result.Content, aiProvider.LastPrompt, StringComparison.Ordinal);
+        var citation = Assert.Single(response.Citations);
+        Assert.Equal("local-fallback", citation.ScoreType);
+        Assert.Equal(0.30, citation.Similarity, precision: 2);
+    }
+
+    [Fact]
+    public async Task No_context_response_is_used_when_all_chunks_fail_provider_threshold()
+    {
+        var result = new SearchResultResponse(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            0,
+            "Unrelated local content",
+            0.19,
+            "stored.pdf",
+            "unrelated.pdf",
+            DateTime.UtcNow,
+            "local-fallback");
+        var aiProvider = new FakeAIProvider();
+        var service = new ChatService(
+            new FakeSemanticSearchService([result]),
+            aiProvider,
+            new InMemoryConversationRepository(),
+            NullLogger<ChatService>.Instance);
+
+        var response = await service.AskAsync(Guid.NewGuid(), new ChatAskRequest("What is NPS"));
+
+        Assert.Equal(RagPromptBuilder.NoContextAnswer, response.Answer);
+        Assert.Empty(response.Citations);
+        Assert.Equal(0, aiProvider.GenerateCallCount);
+    }
+
+    [Fact]
     public void Prompt_requires_grounded_no_context_response()
     {
         var prompt = RagPromptBuilder.Build("What is NPS?", [], false);

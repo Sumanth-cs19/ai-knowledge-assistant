@@ -104,11 +104,20 @@ internal sealed class FakeAIProvider : IAIProvider
 {
     public string Name => "Fake";
 
+    public int GenerateCallCount { get; private set; }
+
+    public IReadOnlyCollection<string> LastContextChunks { get; private set; } = [];
+
+    public string? LastPrompt { get; private set; }
+
     public Task<string> GenerateAnswerAsync(
         string prompt,
         IReadOnlyCollection<string> contextChunks,
         CancellationToken cancellationToken = default)
     {
+        GenerateCallCount++;
+        LastPrompt = prompt;
+        LastContextChunks = contextChunks;
         return Task.FromResult("Grounded fake answer [source: alpha.pdf#0]");
     }
 

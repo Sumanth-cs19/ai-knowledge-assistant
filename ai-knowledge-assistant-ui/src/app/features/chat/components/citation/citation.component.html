@@ -11,7 +11,7 @@
       @if (citation.scoreType === 'document-coverage') {
         Document context
       } @else if (citation.scoreType === 'local-fallback') {
-        Local match {{ citation.similarity | percent: '1.0-1' }}
+        Local fallback match {{ citation.similarity | percent: '1.0-1' }}
       } @else {
         Match {{ citation.similarity | percent: '1.0-1' }}
       }

@@ -1,5 +1,6 @@
 using ai_knowledge_assistant.Application.DTOs.Search;
 using ai_knowledge_assistant.Application.Interfaces;
+using ai_knowledge_assistant.Application.Features.Chat;
 using ai_knowledge_assistant.Domain.Common;
 using ai_knowledge_assistant.Domain.Entities;
 using ai_knowledge_assistant.Domain.Enums;
@@ -19,6 +20,14 @@ namespace ai_knowledge_assistant.UnitTests;
 
 public sealed class SemanticSearchAndProviderTests
 {
+    [Theory]
+    [InlineData("local-fallback", 0.20)]
+    [InlineData("hybrid", 0.35)]
+    public void Relevance_threshold_is_provider_aware(string scoreType, double expected)
+    {
+        Assert.Equal(expected, RagRelevancePolicy.GetMinimumSimilarity(scoreType));
+    }
+
     [Fact]
     public async Task Semantic_search_prefers_keyword_and_vector_matches()
     {

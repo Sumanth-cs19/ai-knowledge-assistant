@@ -131,7 +131,7 @@ public sealed class ChatService : IChatService
     {
         var summarizationMode = IsSummarizationQuestion(request.Question);
         var documentIds = GetRequestedDocumentIds(request);
-        var matches = summarizationMode
+        var retrievedMatches = summarizationMode
             ? await _semanticSearchService.GetDocumentContextAsync(
                 userId,
                 documentIds,
@@ -141,14 +141,20 @@ public sealed class ChatService : IChatService
                 userId,
                 new SearchQueryRequest(request.Question, ContextChunkCount, documentIds),
                 cancellationToken);
+        var matches = retrievedMatches
+            .Where(RagRelevancePolicy.IsRelevant)
+            .ToList();
 
         _logger.LogInformation(
-            "Chat context selected for user {UserId}. SummarizationMode={SummarizationMode}. RequestedDocumentIds={RequestedDocumentIds}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}",
+            "Chat context selected for user {UserId}. SummarizationMode={SummarizationMode}. RequestedDocumentIds={RequestedDocumentIds}. RetrievedCount={RetrievedCount}. AcceptedCount={AcceptedCount}. SelectedChunks={SelectedChunks}. SimilarityScores={SimilarityScores}. ScoreTypes={ScoreTypes}",
             userId,
             summarizationMode,
             documentIds ?? [],
+            retrievedMatches.Count,
+            matches.Count,
             matches.Select(match => match.ChunkId).ToArray(),
-            matches.Select(match => Math.Round(match.Similarity, 4)).ToArray());
+            matches.Select(match => Math.Round(match.Similarity, 4)).ToArray(),
+            matches.Select(match => match.ScoreType).ToArray());
 
         return (matches, summarizationMode);
     }
