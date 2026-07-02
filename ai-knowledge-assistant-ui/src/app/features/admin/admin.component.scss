@@ -48,6 +48,59 @@
   font-size: 1.6rem;
 }
 
+.operations-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.operations-list {
+  display: grid;
+  margin-top: 1rem;
+}
+
+.operations-list > div {
+  align-items: center;
+  border-bottom: 1px solid var(--app-border);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.7rem 0;
+}
+
+.operations-list > div:last-child {
+  border-bottom: 0;
+}
+
+.operations-list span {
+  display: grid;
+  min-width: 0;
+}
+
+.operations-list strong {
+  color: var(--app-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-list small,
+.operations-list time {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+.operations-list.activity > div {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.operations-list.activity mat-icon {
+  color: var(--app-primary);
+  font-size: 1.1rem;
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
 .tab-panel {
   display: grid;
   gap: 1rem;
@@ -209,5 +262,25 @@ h3 {
 
   .analytics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-list > div,
+  .operations-list.activity > div {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .operations-list time {
+    grid-column: 2;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1150px) {
+  .operations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

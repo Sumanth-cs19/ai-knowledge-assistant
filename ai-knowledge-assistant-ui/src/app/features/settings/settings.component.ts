@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -40,6 +40,18 @@ import {
 })
 export class SettingsComponent {
   protected readonly currentUser = inject(AuthService).currentUser;
+  protected readonly displayName = computed(() => {
+    const emailName = this.currentUser()?.email.split('@')[0] ?? '';
+    if (!emailName) {
+      return 'Not provided';
+    }
+
+    return emailName
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+      .join(' ');
+  });
   protected readonly hasUnsavedChanges = signal(false);
 
   private readonly authService = inject(AuthService);
@@ -66,6 +78,16 @@ export class SettingsComponent {
 
   constructor() {
     this.preferencesForm.valueChanges.subscribe(() => this.updateDirtyState());
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected preventRefreshWithUnsavedChanges(event: BeforeUnloadEvent): void {
+    if (!this.hasUnsavedChanges()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.returnValue = '';
   }
 
   canDeactivate(): boolean | Observable<boolean> {

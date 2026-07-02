@@ -7,7 +7,7 @@
 .unsaved-indicator mat-icon { font-size: 1rem; height: 1rem; width: 1rem; }
 .tab-panel { display: grid; gap: 1rem; padding-top: 1rem; }
 mat-card { border-radius: 8px; min-width: 0; }
-.account-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 1.25rem 0 0; }
+.account-grid { display: grid; gap: 1rem; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 1.25rem 0 0; }
 .account-grid div { background: var(--app-surface-muted); border: 1px solid var(--app-border); border-radius: 8px; padding: 1rem; }
 .account-grid dt { color: var(--app-muted); font-size: 0.78rem; }
 .account-grid dd { color: var(--app-text); margin: 0.35rem 0 0; overflow-wrap: anywhere; }

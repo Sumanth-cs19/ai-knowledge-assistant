@@ -37,6 +37,35 @@
       }
     </section>
 
+    <section class="operations-grid" aria-label="Recent administration activity">
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-icon mat-card-avatar>person_add</mat-icon><mat-card-title>Recent Registrations</mat-card-title></mat-card-header>
+        <mat-card-content class="operations-list">
+          @for (user of recentRegistrations(); track user.id) {
+            <div><span><strong>{{ user.email }}</strong><small>{{ user.role.name }}</small></span><time>{{ user.createdAt | date: 'mediumDate' }}</time></div>
+          } @empty { <p class="muted">No registrations are available yet.</p> }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-icon mat-card-avatar>upload_file</mat-icon><mat-card-title>Latest Uploaded Documents</mat-card-title></mat-card-header>
+        <mat-card-content class="operations-list">
+          @for (document of latestDocuments(); track document.documentId) {
+            <div><span><strong>{{ document.originalFileName }}</strong><small>{{ documentStatusLabel(document.status) }} &middot; v{{ document.versionNumber }}</small></span><time>{{ document.uploadedAt | date: 'mediumDate' }}</time></div>
+          } @empty { <p class="muted">Document diagnostics are unavailable or no files have been uploaded.</p> }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-icon mat-card-avatar>monitor_heart</mat-icon><mat-card-title>Recent System Activity</mat-card-title></mat-card-header>
+        <mat-card-content class="operations-list activity">
+          @for (activity of recentSystemActivity(); track activity.title + activity.detail + activity.occurredAt) {
+            <div><mat-icon>{{ activity.icon }}</mat-icon><span><strong>{{ activity.title }}</strong><small>{{ activity.detail }}</small></span><time>{{ activity.occurredAt | date: 'short' }}</time></div>
+          } @empty { <p class="muted">No recent system activity.</p> }
+        </mat-card-content>
+      </mat-card>
+    </section>
+
     <mat-tab-group>
       <mat-tab label="Users">
         <section class="tab-panel">

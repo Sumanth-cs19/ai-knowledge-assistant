@@ -1,33 +1,54 @@
 <section class="dashboard-page">
   <header class="page-header">
-    <div>
-      <h1>Dashboard</h1>
-      <p>Your document knowledge base and recent workspace activity.</p>
-    </div>
-    <button mat-icon-button type="button" aria-label="Refresh dashboard" (click)="refresh()">
-      <mat-icon>refresh</mat-icon>
-    </button>
+    <div><h1>Dashboard</h1><p>Your document knowledge base and recent workspace activity.</p></div>
+    <button mat-icon-button type="button" aria-label="Refresh dashboard" (click)="refresh()"><mat-icon>refresh</mat-icon></button>
   </header>
 
   @if (isLoading()) {
     <mat-progress-bar mode="indeterminate" aria-label="Loading dashboard" />
+    <section class="metric-grid" aria-label="Loading dashboard summaries">
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <mat-card appearance="outlined"><app-skeleton [rows]="2" /></mat-card>
+      }
+    </section>
+  } @else {
+    <section class="metric-grid" aria-label="Workspace overview">
+      @for (metric of metricCards(); track metric.label) {
+        <mat-card appearance="outlined" class="metric-card">
+          <mat-icon>{{ metric.icon }}</mat-icon><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong>
+        </mat-card>
+      }
+    </section>
   }
 
-  <section class="metric-grid" aria-label="Workspace overview">
-    @for (metric of metricCards(); track metric.label) {
-      <mat-card appearance="outlined" class="metric-card">
-        <mat-icon>{{ metric.icon }}</mat-icon>
-        <span>{{ metric.label }}</span>
-        <strong>{{ metric.value }}</strong>
-      </mat-card>
-    }
+  <section class="quick-actions" aria-labelledby="quick-actions-title">
+    <div><h2 id="quick-actions-title">Quick Actions</h2><p>Jump back into your most common workflows.</p></div>
+    <nav aria-label="Dashboard quick actions">
+      <a mat-flat-button routerLink="/documents"><mat-icon>upload_file</mat-icon>Upload Document</a>
+      <a mat-stroked-button routerLink="/chat"><mat-icon>chat</mat-icon>Open Chat</a>
+      <a mat-stroked-button routerLink="/documents"><mat-icon>folder_open</mat-icon>View Documents</a>
+    </nav>
   </section>
 
+  @if (showGettingStarted()) {
+    <mat-card appearance="outlined" class="getting-started">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>rocket_launch</mat-icon>
+        <mat-card-title>Getting Started</mat-card-title>
+        <mat-card-subtitle>Complete these steps to start asking grounded questions.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="checklist">
+          @for (step of gettingStartedSteps(); track step.label) {
+            <div [class.complete]="step.complete"><mat-icon>{{ step.complete ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon><span>{{ step.label }}</span></div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
   @if (errorMessage()) {
-    <div class="error-state" role="alert">
-      <mat-icon>cloud_off</mat-icon>
-      <span>{{ errorMessage() }}</span>
-    </div>
+    <div class="error-state" role="alert"><mat-icon>cloud_off</mat-icon><span>{{ errorMessage() }}</span></div>
   }
 
   <section class="dashboard-grid">
@@ -40,18 +61,17 @@
       <mat-card-content>
         @if (recentDocuments().length > 0) {
           <div class="document-list">
+            <div class="document-header" aria-hidden="true"><span>File Name</span><span>Upload Date</span><span>Status</span><span>Version</span></div>
             @for (document of recentDocuments(); track document.id) {
               <article class="document-row">
-                <div class="document-name">
-                  <mat-icon>insert_drive_file</mat-icon>
-                  <div><strong>{{ document.originalFileName }}</strong><span>{{ document.uploadedAt | date: 'mediumDate' }}</span></div>
-                </div>
+                <div class="document-name"><mat-icon>insert_drive_file</mat-icon><strong>{{ document.originalFileName }}</strong></div>
+                <span class="upload-date">{{ document.uploadedAt | date: 'mediumDate' }}</span>
                 <span class="status" [class]="'status ' + statusClass(document.status)">{{ statusLabel(document.status) }}</span>
                 <span class="version">v{{ document.versionNumber || 1 }}</span>
               </article>
             }
           </div>
-          <a mat-button routerLink="/documents">View all documents <mat-icon>arrow_forward</mat-icon></a>
+          <a mat-button routerLink="/documents">View All Documents <mat-icon>arrow_forward</mat-icon></a>
         } @else if (!isLoading()) {
           <div class="empty-state"><mat-icon>note_add</mat-icon><strong>No documents yet</strong><p>Upload a PDF or DOCX to build your knowledge base.</p><a mat-stroked-button routerLink="/documents">Go to Documents</a></div>
         }
@@ -62,15 +82,15 @@
       <mat-card-header>
         <mat-icon mat-card-avatar>history</mat-icon>
         <mat-card-title>Recent Activity</mat-card-title>
-        <mat-card-subtitle>Uploads and conversations, newest first.</mat-card-subtitle>
+        <mat-card-subtitle>Uploads and questions, newest first.</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         @if (recentActivity().length > 0) {
           <div class="activity-list">
-            @for (activity of recentActivity(); track activity.title + activity.occurredAt) {
+            @for (activity of recentActivity(); track activity.action + activity.occurredAt) {
               <a [routerLink]="activity.route" class="activity-row">
-                <mat-icon>{{ activity.icon }}</mat-icon>
-                <div><strong>{{ activity.title }}</strong><span>{{ activity.detail }} · {{ activity.occurredAt | date: 'short' }}</span></div>
+                <span class="activity-marker"><mat-icon>{{ activity.icon }}</mat-icon></span>
+                <div><span>{{ activityDateLabel(activity.occurredAt) }}</span><strong>{{ activity.action }}</strong></div>
               </a>
             }
           </div>

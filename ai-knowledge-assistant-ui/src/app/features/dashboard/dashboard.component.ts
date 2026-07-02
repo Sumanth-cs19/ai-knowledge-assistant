@@ -12,18 +12,18 @@ import { DocumentDto, DocumentStatus } from '../../core/models/document.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConversationService } from '../../core/services/conversation.service';
 import { DocumentService } from '../../core/services/document.service';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 
 interface DashboardActivity {
   icon: string;
-  title: string;
-  detail: string;
+  action: string;
   occurredAt: string;
   route: string;
 }
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatIconModule, MatProgressBarModule],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatIconModule, MatProgressBarModule, SkeletonComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -39,6 +39,16 @@ export class DashboardComponent {
     .slice(0, 5));
   protected readonly indexedDocuments = computed(() => this.documents()
     .filter((document) => this.statusLabel(document.status) === 'Indexed').length);
+  protected readonly showGettingStarted = computed(() => !this.isLoading() && (
+    this.documents().length === 0
+    || this.indexedDocuments() === 0
+    || this.totalConversations() === 0
+  ));
+  protected readonly gettingStartedSteps = computed(() => [
+    { label: 'Upload your first document', complete: this.documents().length > 0 },
+    { label: 'Wait until the document is Indexed', complete: this.indexedDocuments() > 0 },
+    { label: 'Ask your first question', complete: this.totalConversations() > 0 }
+  ]);
   protected readonly metricCards = computed(() => [
     { label: 'Total Documents', value: this.documents().length, icon: 'description' },
     { label: 'Indexed Documents', value: this.indexedDocuments(), icon: 'task_alt' },
@@ -48,15 +58,15 @@ export class DashboardComponent {
   protected readonly recentActivity = computed<DashboardActivity[]>(() => {
     const documentActivity = this.documents().map((document) => ({
       icon: 'upload_file',
-      title: document.originalFileName,
-      detail: `Document ${this.statusLabel(document.status).toLowerCase()}`,
+      action: `Uploaded ${document.originalFileName}`,
       occurredAt: document.uploadedAt,
       route: '/documents'
     }));
     const conversationActivity = this.conversations().map((conversation) => ({
       icon: 'chat_bubble_outline',
-      title: conversation.title || 'Untitled conversation',
-      detail: conversation.isArchived ? 'Conversation archived' : 'Conversation updated',
+      action: conversation.isArchived
+        ? `Archived conversation: ${conversation.title || 'Untitled conversation'}`
+        : `Asked: \"${conversation.title || 'Untitled conversation'}\"`,
       occurredAt: conversation.updatedAt,
       route: '/chat'
     }));
@@ -87,6 +97,26 @@ export class DashboardComponent {
 
   protected statusClass(status: DocumentDto['status']): string {
     return this.statusLabel(status).toLowerCase();
+  }
+
+  protected activityDateLabel(value: string): string {
+    const activityDate = new Date(value);
+    const today = new Date();
+    const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const activityDayStart = new Date(
+      activityDate.getFullYear(),
+      activityDate.getMonth(),
+      activityDate.getDate()
+    ).getTime();
+    const daysAgo = Math.max(0, Math.round((dayStart - activityDayStart) / 86_400_000));
+
+    if (daysAgo === 0) {
+      return 'Today';
+    }
+    if (daysAgo === 1) {
+      return 'Yesterday';
+    }
+    return `${daysAgo} days ago`;
   }
 
   private loadDashboard(): void {

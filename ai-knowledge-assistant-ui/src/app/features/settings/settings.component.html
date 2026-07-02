@@ -28,6 +28,7 @@
           </mat-card-header>
           <mat-card-content>
             <dl class="account-grid">
+              <div><dt>Name</dt><dd>{{ displayName() }}</dd></div>
               <div><dt>Email</dt><dd>{{ currentUser()?.email || 'Not available' }}</dd></div>
               <div><dt>Role</dt><dd>{{ currentUser()?.role || 'User' }}</dd></div>
               <div><dt>Status</dt><dd><span class="active-status"><span></span>Active</span></dd></div>

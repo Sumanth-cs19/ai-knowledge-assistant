@@ -13,7 +13,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ToastrService } from 'ngx-toastr';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 
 import {
   AdminChatAnalyticsDto,
@@ -22,6 +22,7 @@ import {
   AdminOverviewDto,
   AdminUserAnalyticsDto,
   AdminUserDto,
+  RagDocumentDiagnosticDto,
   RoleDto
 } from '../../core/models/admin.model';
 import { AdminService } from '../../core/services/admin.service';
@@ -31,6 +32,13 @@ import {
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { RagDiagnosticsComponent } from './rag-diagnostics/rag-diagnostics.component';
+
+interface AdminSystemActivity {
+  icon: string;
+  title: string;
+  detail: string;
+  occurredAt: string;
+}
 
 @Component({
   selector: 'app-admin',
@@ -62,6 +70,7 @@ export class AdminComponent {
   protected readonly users = signal<AdminUserDto[]>([]);
   protected readonly selectedUser = signal<AdminUserDto | null>(null);
   protected readonly roles = signal<RoleDto[]>([]);
+  protected readonly ragDocuments = signal<RagDocumentDiagnosticDto[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly searchControl = new FormControl('', { nonNullable: true });
@@ -92,19 +101,38 @@ export class AdminComponent {
     }
 
     return [
-      { label: 'Total users', value: overview.totalUsers, icon: 'group' },
-      { label: 'Active users', value: overview.activeUsers, icon: 'verified_user' },
-      { label: 'Total documents', value: overview.totalDocuments, icon: 'description' },
-      { label: 'Indexed documents', value: overview.indexedDocuments, icon: 'fact_check' },
-      { label: 'Failed documents', value: overview.failedDocuments, icon: 'error' },
-      { label: 'Total conversations', value: overview.totalConversations, icon: 'forum' },
-      { label: 'Total messages', value: overview.totalChatMessages, icon: 'chat' },
-      {
-        label: 'Avg feedback',
-        value: overview.averageFeedbackRating === null ? 'N/A' : overview.averageFeedbackRating.toFixed(1),
-        icon: 'thumbs_up_down'
-      }
+      { label: 'Total Users', value: overview.totalUsers, icon: 'group' },
+      { label: 'Admin Users', value: this.users().filter((user) => user.role.name.toLowerCase() === 'admin').length, icon: 'admin_panel_settings' },
+      { label: 'Total Indexed Documents', value: overview.indexedDocuments, icon: 'fact_check' },
+      { label: 'Failed Documents', value: overview.failedDocuments, icon: 'error' }
     ];
+  });
+  protected readonly recentRegistrations = computed(() => [...this.users()]
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    .slice(0, 5));
+  protected readonly latestDocuments = computed(() => [...this.ragDocuments()]
+    .sort((left, right) => Date.parse(right.uploadedAt) - Date.parse(left.uploadedAt))
+    .slice(0, 5));
+  protected readonly recentSystemActivity = computed<AdminSystemActivity[]>(() => {
+    const registrations = this.users().map((user) => ({
+      icon: 'person_add',
+      title: 'User registered',
+      detail: user.email,
+      occurredAt: user.createdAt
+    }));
+    const uploads = this.ragDocuments().map((document) => {
+      const failed = document.status === 'Failed' || document.status === 4;
+      return {
+        icon: failed ? 'error_outline' : 'upload_file',
+        title: failed ? 'Document processing failed' : 'Document uploaded',
+        detail: document.originalFileName,
+        occurredAt: document.uploadedAt
+      };
+    });
+
+    return [...registrations, ...uploads]
+      .sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt))
+      .slice(0, 6);
   });
 
   private readonly adminService = inject(AdminService);
@@ -185,6 +213,15 @@ export class AdminComponent {
     return this.users().length > 0 && this.filteredUsers().length === 0;
   }
 
+  protected documentStatusLabel(status: number | string): string {
+    if (typeof status === 'string') {
+      return status;
+    }
+
+    return ({ 1: 'Pending', 2: 'Processing', 3: 'Indexed', 4: 'Failed' } as Record<number, string>)[status]
+      ?? 'Unknown';
+  }
+
   private loadAdminData(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
@@ -196,7 +233,8 @@ export class AdminComponent {
       chatAnalytics: this.adminService.getChatAnalytics(),
       feedbackAnalytics: this.adminService.getFeedbackAnalytics(),
       users: this.adminService.getUsers(),
-      roles: this.adminService.getRoles()
+      roles: this.adminService.getRoles(),
+      ragDocuments: this.adminService.getRagDocuments().pipe(catchError(() => of([])))
     }).subscribe({
       next: (response) => {
         this.overview.set(response.overview);
@@ -206,6 +244,7 @@ export class AdminComponent {
         this.feedbackAnalytics.set(response.feedbackAnalytics);
         this.users.set(response.users);
         this.roles.set(response.roles);
+        this.ragDocuments.set(response.ragDocuments);
         this.isLoading.set(false);
       },
       error: (error: unknown) => {
