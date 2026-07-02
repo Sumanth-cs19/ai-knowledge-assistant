@@ -48,4 +48,18 @@ describe('PreferencesService', () => {
     });
     expect(service.isCompactSidebar()).toBe(true);
   });
+
+  it('previews compact sidebar without persisting and reverts to the saved value', () => {
+    const service = TestBed.inject(PreferencesService);
+
+    service.previewCompactSidebar(true);
+
+    expect(service.isCompactSidebar()).toBe(true);
+    expect(service.preferences().compactSidebar).toBe(false);
+    expect(localStorage.getItem('ai-knowledge-assistant.preferences')).toBeNull();
+
+    service.clearCompactSidebarPreview();
+
+    expect(service.isCompactSidebar()).toBe(false);
+  });
 });

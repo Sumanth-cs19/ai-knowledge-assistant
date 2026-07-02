@@ -1,6 +1,6 @@
 import { DatePipe, SlicePipe } from '@angular/common';
 import { HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -13,7 +13,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { ToastrService } from 'ngx-toastr';
-import { finalize } from 'rxjs';
+import { EMPTY, Subscription, catchError, finalize, switchMap, timer } from 'rxjs';
 
 import {
   DocumentChunkDto,
@@ -51,7 +51,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.com
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })
-export class DocumentsComponent {
+export class DocumentsComponent implements OnDestroy {
   protected readonly DocumentStatus = DocumentStatus;
   protected readonly statusOptions = [
     { label: 'All statuses', value: 'all' },
@@ -101,11 +101,21 @@ export class DocumentsComponent {
   private readonly dialog = inject(MatDialog);
   private readonly toastr = inject(ToastrService);
   private readonly maxFileSizeBytes = 25 * 1024 * 1024;
+  private readonly pollingIntervalMs = 4000;
+  private readonly pollingSubscriptions = new Map<string, Subscription>();
+  private readonly terminalStatusToasts = new Set<string>();
 
   constructor() {
     this.loadDocuments();
     this.searchControl.valueChanges.subscribe(() => this.pageIndex.set(0));
     this.statusControl.valueChanges.subscribe(() => this.pageIndex.set(0));
+  }
+
+  ngOnDestroy(): void {
+    for (const subscription of this.pollingSubscriptions.values()) {
+      subscription.unsubscribe();
+    }
+    this.pollingSubscriptions.clear();
   }
 
   protected onDragOver(event: DragEvent): void {
@@ -199,6 +209,7 @@ export class DocumentsComponent {
       this.documentService.deleteDocument(document.id).subscribe({
         next: () => {
           this.toastr.success('Document deleted.', 'Delete complete');
+          this.stopPolling(document.id);
           this.clearPanelIfSelected(document.id);
           this.loadDocuments();
         }
@@ -245,6 +256,7 @@ export class DocumentsComponent {
     this.documentService.getMyDocuments().subscribe({
       next: (response) => {
         this.documents.set(response);
+        this.syncDocumentPolling(response);
         this.isLoadingDocuments.set(false);
       },
       error: () => this.isLoadingDocuments.set(false)
@@ -284,14 +296,99 @@ export class DocumentsComponent {
     }
 
     if (event.type === HttpEventType.Response) {
+      const uploadedDocument = event.body;
+      if (!uploadedDocument) {
+        return;
+      }
+
       this.uploadProgress.set(100);
       this.toastr.success('Document uploaded and queued for indexing.', 'Upload complete');
       this.uploadStatus.set({
         kind: 'success',
         message: 'Document uploaded successfully. Processing and indexing are now in progress; wait for the Indexed status before asking questions.'
       });
-      this.documents.update((items) => [event.body, ...items].filter((item): item is DocumentDto => item !== null));
+      this.documents.update((items) => [uploadedDocument, ...items.filter((item) => item.id !== uploadedDocument.id)]);
+
+      if (this.isTerminalStatus(uploadedDocument.status)) {
+        this.handleTerminalStatus(uploadedDocument);
+      } else {
+        this.startPolling(uploadedDocument.id);
+      }
     }
+  }
+
+  private startPolling(documentId: string): void {
+    if (this.pollingSubscriptions.has(documentId)) {
+      return;
+    }
+
+    const subscription = timer(this.pollingIntervalMs, this.pollingIntervalMs).pipe(
+      switchMap(() => this.documentService.getDocumentById(documentId, true).pipe(
+        catchError(() => EMPTY)
+      ))
+    ).subscribe((document) => {
+      this.updateDocument(document);
+
+      if (this.isTerminalStatus(document.status)) {
+        this.handleTerminalStatus(document);
+      }
+    });
+
+    this.pollingSubscriptions.set(documentId, subscription);
+  }
+
+  private stopPolling(documentId: string): void {
+    this.pollingSubscriptions.get(documentId)?.unsubscribe();
+    this.pollingSubscriptions.delete(documentId);
+  }
+
+  private syncDocumentPolling(documents: DocumentDto[]): void {
+    const documentIds = new Set(documents.map((document) => document.id));
+
+    for (const documentId of this.pollingSubscriptions.keys()) {
+      if (!documentIds.has(documentId)) {
+        this.stopPolling(documentId);
+      }
+    }
+
+    for (const document of documents) {
+      if (!this.isTerminalStatus(document.status)) {
+        this.startPolling(document.id);
+      } else if (this.pollingSubscriptions.has(document.id)) {
+        this.handleTerminalStatus(document);
+      }
+    }
+  }
+
+  private updateDocument(document: DocumentDto): void {
+    this.documents.update((items) => items.map((item) => item.id === document.id ? document : item));
+
+    if (this.selectedDocument()?.id === document.id) {
+      this.selectedDocument.set(document);
+    }
+  }
+
+  private handleTerminalStatus(document: DocumentDto): void {
+    this.stopPolling(document.id);
+    if (this.terminalStatusToasts.has(document.id)) {
+      return;
+    }
+
+    this.terminalStatusToasts.add(document.id);
+    if (this.normalizeStatus(document.status) === DocumentStatus.Indexed) {
+      this.toastr.success('Your document is indexed and ready for chat.', 'Document ready');
+      return;
+    }
+
+    this.toastr.error(
+      'Document indexing failed. Please check the file or try again.',
+      'Indexing failed'
+    );
+  }
+
+  private isTerminalStatus(status: DocumentDto['status']): boolean {
+    const normalizedStatus = this.normalizeStatus(status);
+    return normalizedStatus === DocumentStatus.Indexed || normalizedStatus === DocumentStatus.Failed;
   }
 
   private validateFile(file: File): string | null {

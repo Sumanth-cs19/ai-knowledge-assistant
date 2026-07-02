@@ -33,9 +33,7 @@
 
     @if (message.citations?.length) {
       <div class="citations">
-        @for (citation of message.citations; track citation.chunkId) {
-          <app-citation [citation]="citation" (openDocument)="openDocument.emit($event)" />
-        }
+        <app-citation [citations]="message.citations ?? []" (openDocument)="openDocument.emit($event)" />
       </div>
     }
   </div>

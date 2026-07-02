@@ -9,13 +9,25 @@ const PREFERENCES_STORAGE_KEY = 'ai-knowledge-assistant.preferences';
 })
 export class PreferencesService {
   private readonly preferencesState = signal<UserPreferences>(this.loadPreferences());
+  private readonly compactSidebarPreview = signal<boolean | null>(null);
   readonly preferences = computed(() => this.preferencesState());
-  readonly isCompactSidebar = computed(() => this.preferencesState().compactSidebar);
+  readonly isCompactSidebar = computed(() => {
+    return this.compactSidebarPreview() ?? this.preferencesState().compactSidebar;
+  });
 
   updatePreferences(preferences: UserPreferences): void {
     const savedPreferences = { ...preferences };
     this.preferencesState.set(savedPreferences);
+    this.compactSidebarPreview.set(null);
     localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(savedPreferences));
+  }
+
+  previewCompactSidebar(compact: boolean): void {
+    this.compactSidebarPreview.set(compact);
+  }
+
+  clearCompactSidebarPreview(): void {
+    this.compactSidebarPreview.set(null);
   }
 
   resetPreferences(): void {

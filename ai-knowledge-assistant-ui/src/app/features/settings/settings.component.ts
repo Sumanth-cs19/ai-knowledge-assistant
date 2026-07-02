@@ -122,6 +122,7 @@ export class SettingsComponent {
 
   protected discardPreferences(showToast = true): void {
     this.preferencesForm.setValue(this.savedPreferences, { emitEvent: false });
+    this.preferencesService.clearCompactSidebarPreview();
     this.preferencesForm.markAsPristine();
     this.hasUnsavedChanges.set(false);
     if (showToast) {
@@ -161,6 +162,12 @@ export class SettingsComponent {
 
   private updateDirtyState(): void {
     const current = this.preferencesForm.getRawValue();
+    if (current.compactSidebar === this.savedPreferences.compactSidebar) {
+      this.preferencesService.clearCompactSidebarPreview();
+    } else {
+      this.preferencesService.previewCompactSidebar(current.compactSidebar);
+    }
+
     this.hasUnsavedChanges.set(
       current.defaultChatBehavior !== this.savedPreferences.defaultChatBehavior
       || current.streamingEnabled !== this.savedPreferences.streamingEnabled

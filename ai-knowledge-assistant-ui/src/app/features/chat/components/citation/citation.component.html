@@ -1,21 +1,48 @@
-<mat-expansion-panel class="citation" hideToggle>
-  <mat-expansion-panel-header>
-    <mat-panel-title>
-      <button type="button" class="citation-link" (click)="openDocument.emit(citation.documentId); $event.stopPropagation()">
-        <mat-icon>article</mat-icon>
-        {{ citation.originalFileName || citation.documentName }}
-      </button>
-    </mat-panel-title>
-    <mat-panel-description>
-      Chunk {{ citation.chunkIndex }} &middot;
-      @if (citation.scoreType === 'document-coverage') {
-        Document context
-      } @else if (citation.scoreType === 'local-fallback') {
-        Local fallback match {{ citation.similarity | percent: '1.0-1' }}
-      } @else {
-        Match {{ citation.similarity | percent: '1.0-1' }}
-      }
-    </mat-panel-description>
-  </mat-expansion-panel-header>
-  <p>{{ citation.snippet }}</p>
-</mat-expansion-panel>
+<section class="sources" aria-label="Answer sources">
+  <header class="sources-header">
+    <mat-icon>library_books</mat-icon>
+    <strong>Sources</strong>
+    <span>{{ groups.length }} {{ groups.length === 1 ? 'document' : 'documents' }} &middot; {{ citations.length }} chunks</span>
+  </header>
+
+  <div class="source-list">
+    @for (group of groups; track group.documentId || group.documentName) {
+      <mat-expansion-panel class="source-panel">
+        <mat-expansion-panel-header collapsedHeight="44px" expandedHeight="44px">
+          <mat-panel-title>
+            <mat-icon>description</mat-icon>
+            <span class="document-name">{{ group.documentName }}</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            <span>{{ chunkLabel(group.citations.length) }}</span>
+            <span class="view-label">View chunks</span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="chunk-list">
+          @for (citation of group.citations; track citation.chunkId) {
+            <article class="chunk">
+              <div class="chunk-meta">
+                <strong>Chunk {{ citation.chunkIndex }}</strong>
+                <span>
+                  @if (citation.scoreType === 'document-coverage') {
+                    Document context
+                  } @else if (citation.scoreType === 'local-fallback') {
+                    Local fallback match {{ citation.similarity | percent: '1.0-1' }}
+                  } @else {
+                    Match {{ citation.similarity | percent: '1.0-1' }}
+                  }
+                </span>
+              </div>
+              <p>{{ citation.snippet }}</p>
+            </article>
+          }
+          <button type="button" class="open-document" (click)="openDocument.emit(group.documentId)">
+            <mat-icon>open_in_new</mat-icon>
+            Open document
+          </button>
+        </div>
+      </mat-expansion-panel>
+    }
+  </div>
+</section>

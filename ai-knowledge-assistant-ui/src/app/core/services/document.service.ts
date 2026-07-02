@@ -36,8 +36,11 @@ export class DocumentService {
     return this.http.get<DocumentDto[]>(`${this.documentsUrl}/my-documents`, { context });
   }
 
-  getDocumentById(id: string): Observable<DocumentDto> {
-    return this.http.get<DocumentDto>(`${this.documentsUrl}/${id}`);
+  getDocumentById(id: string, background = false): Observable<DocumentDto> {
+    const context = background
+      ? new HttpContext().set(SKIP_GLOBAL_LOADING, true)
+      : undefined;
+    return this.http.get<DocumentDto>(`${this.documentsUrl}/${id}`, { context });
   }
 
   deleteDocument(id: string): Observable<void> {
