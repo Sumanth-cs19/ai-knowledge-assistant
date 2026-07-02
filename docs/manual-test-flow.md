@@ -2,6 +2,8 @@
 
 This guide validates the complete local workflow through Swagger: authentication, document indexing, grounded Groq chat, feedback, and conversation history.
 
+For the deployed portfolio flow, open `https://ai-knowledge-assistant-seven.vercel.app` and follow the same sequence through the Angular UI. The live API is `https://ai-knowledge-assistant-api-h4bx.onrender.com`.
+
 ## Prerequisites
 
 - Docker Desktop is running.
